@@ -151,3 +151,4 @@ function analisarProdutividade(){
 
 /* START */
 render();
+render();
