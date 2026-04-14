@@ -8,38 +8,55 @@
 
 <style>
 
+body{
+background:#f1f5f9;
+transition:.3s;
+}
+
+/* DARK MODE REAL */
 body.dark{
-background:#0f172a;
-color:white;
+background:#000000;
+color:#e5e7eb;
 }
 
-.dark .card{
-background:#1e293b;
-color:white;
-}
-
+/* CARDS */
 .card{
 background:white;
 border-radius:12px;
 padding:20px;
 box-shadow:0 4px 12px rgba(0,0,0,.1);
+transition:.3s;
 }
 
+.dark .card{
+background:#111111;
+box-shadow:0 4px 20px rgba(0,0,0,.6);
+}
+
+/* SIDEBAR */
 .menu{
 width:220px;
+background:#111111;
+color:white;
+min-height:100vh;
 }
 
+.dark .menu{
+background:#000000;
+}
+
+/* BOTÕES MENU */
 .menu button{
 width:100%;
 text-align:left;
 padding:10px;
 border-radius:8px;
-margin-bottom:5px;
+margin-bottom:6px;
+transition:.2s;
 }
 
 .menu button:hover{
-background:#334155;
-color:white;
+background:#222222;
 }
 
 .hidden{
@@ -50,18 +67,26 @@ display:none;
 
 </head>
 
-<body id="body" class="bg-gray-100">
+<body id="body">
 
-<div class="flex min-h-screen">
+<div class="flex">
 
-<!-- MENU -->
-<div class="menu bg-slate-800 text-white p-4">
+<!-- SIDEBAR -->
+<div class="menu p-4">
 
-<h2 class="text-xl mb-6">📊 Painel</h2>
+<div class="flex items-center gap-3 mb-6">
+
+<img src="logo.png" width="40">
+
+<h2 class="text-lg font-semibold">
+Olá, Victor
+</h2>
+
+</div>
 
 <button onclick="show('today')">📋 Tarefas Hoje</button>
 <button onclick="show('history')">📅 Histórico</button>
-<button onclick="show('dashboard')">📈 Dashboard</button>
+<button onclick="show('dashboard')">📊 Dashboard</button>
 
 <hr class="my-4">
 
@@ -80,9 +105,9 @@ display:none;
 <div class="card">
 
 <div class="flex gap-2 mb-4">
-<input id="taskInput" class="border p-2 w-full" placeholder="Nova tarefa">
+<input id="taskInput" class="border p-2 w-full text-black" placeholder="Nova tarefa">
 
-<select id="priority" class="border p-2">
+<select id="priority" class="border p-2 text-black">
 <option value="alta">Alta</option>
 <option value="media">Média</option>
 <option value="baixa">Baixa</option>
@@ -104,7 +129,7 @@ Adicionar
 <h1 class="text-2xl font-bold mb-4">Histórico</h1>
 
 <div class="card">
-<input type="date" id="historyDate" onchange="loadHistory()" class="border p-2 mb-4">
+<input type="date" id="historyDate" onchange="loadHistory()" class="border p-2 mb-4 text-black">
 <ul id="historyList"></ul>
 </div>
 
