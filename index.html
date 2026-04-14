@@ -3,359 +3,70 @@
 <head>
 <meta charset="UTF-8">
 <title>Task Dashboard</title>
-
-<script src="https://cdn.tailwindcss.com"></script>
-
-<style>
-
-body{
-background:#f1f5f9;
-transition:.3s;
-}
-
-/* DARK MODE REAL */
-body.dark{
-background:#000000;
-color:#e5e7eb;
-}
-
-/* CARDS */
-.card{
-background:white;
-border-radius:12px;
-padding:20px;
-box-shadow:0 4px 12px rgba(0,0,0,.1);
-transition:.3s;
-}
-
-.dark .card{
-background:#111111;
-box-shadow:0 4px 20px rgba(0,0,0,.6);
-}
-
-/* SIDEBAR */
-.menu{
-width:220px;
-background:#111111;
-color:white;
-min-height:100vh;
-}
-
-.dark .menu{
-background:#000000;
-}
-
-/* BOTÕES MENU */
-.menu button{
-width:100%;
-text-align:left;
-padding:10px;
-border-radius:8px;
-margin-bottom:6px;
-transition:.2s;
-}
-
-.menu button:hover{
-background:#222222;
-}
-
-.hidden{
-display:none;
-}
-
-</style>
-
+<link rel="stylesheet" href="style.css">
 </head>
 
-<body id="body">
+<body class="dark">
 
-<div class="flex">
+<div class="container">
 
-<!-- SIDEBAR -->
-<div class="menu p-4">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
 
-<div class="flex items-center gap-3 mb-6">
+        <div class="logo">
+            <img src="logo.png" width="40">
+            <h2>Olá, Victor</h2>
+        </div>
 
-<img src="logo.png" width="40">
+        <button onclick="mostrarPagina('hoje')">📋 Tarefas de Hoje</button>
+        <button onclick="mostrarPagina('historico')">📅 Histórico</button>
+        <button onclick="mostrarPagina('dashboard')">📊 Dashboard</button>
 
-<h2 class="text-lg font-semibold">
-Olá, Victor
-</h2>
+        <hr>
 
-</div>
+        <button onclick="toggleDark()">🌙 Modo Noturno</button>
+        <button onclick="ativarModoInteligente()">🧠 Modo Inteligente</button>
 
-<button onclick="show('today')">📋 Tarefas Hoje</button>
-<button onclick="show('history')">📅 Histórico</button>
-<button onclick="show('dashboard')">📊 Dashboard</button>
+    </aside>
 
-<hr class="my-4">
+    <!-- CONTEUDO -->
+    <main>
 
-<button onclick="toggleDark()">🌙 Modo Noturno</button>
+        <!-- HOJE -->
+        <section id="hoje" class="pagina">
+            <h1>Tarefas de Hoje</h1>
 
-</div>
+            <input id="novaTarefa" placeholder="Digite uma tarefa">
+            <button onclick="adicionarTarefa()">Adicionar</button>
 
-<!-- CONTEÚDO -->
-<div class="flex-1 p-6">
+            <div id="lista"></div>
+        </section>
 
-<!-- HOJE -->
-<div id="today">
+        <!-- HISTORICO -->
+        <section id="historico" class="pagina hidden">
+            <h1>Histórico</h1>
+            <div id="historicoLista"></div>
+        </section>
 
-<h1 class="text-2xl font-bold mb-4">Tarefas de Hoje</h1>
+        <!-- DASHBOARD -->
+        <section id="dashboard" class="pagina hidden">
+            <h1>Dashboard</h1>
 
-<div class="card">
+            <div class="kpis">
+                <div class="card" id="kpiTotal"></div>
+                <div class="card" id="kpiConcluidas"></div>
+                <div class="card" id="kpiProd"></div>
+            </div>
 
-<div class="flex gap-2 mb-4">
-<input id="taskInput" class="border p-2 w-full text-black" placeholder="Nova tarefa">
+            <div id="kpi" class="card"></div>
 
-<select id="priority" class="border p-2 text-black">
-<option value="alta">Alta</option>
-<option value="media">Média</option>
-<option value="baixa">Baixa</option>
-</select>
+        </section>
 
-<button onclick="addTask()" class="bg-blue-500 text-white px-4 rounded">
-Adicionar
-</button>
-</div>
-
-<ul id="taskList"></ul>
-
-</div>
-</div>
-
-<!-- HISTÓRICO -->
-<div id="history" class="hidden">
-
-<h1 class="text-2xl font-bold mb-4">Histórico</h1>
-
-<div class="card">
-<input type="date" id="historyDate" onchange="loadHistory()" class="border p-2 mb-4 text-black">
-<ul id="historyList"></ul>
-</div>
+    </main>
 
 </div>
 
-<!-- DASHBOARD -->
-<div id="dashboard" class="hidden">
-
-<h1 class="text-2xl font-bold mb-4">Dashboard</h1>
-
-<div class="grid grid-cols-4 gap-4">
-
-<div class="card text-center">
-<p>Total</p>
-<h2 id="kpiTotal" class="text-xl font-bold">0</h2>
-</div>
-
-<div class="card text-center">
-<p>Concluídas</p>
-<h2 id="kpiDone" class="text-xl font-bold text-green-500">0</h2>
-</div>
-
-<div class="card text-center">
-<p>Pendentes</p>
-<h2 id="kpiPending" class="text-xl font-bold text-red-500">0</h2>
-</div>
-
-<div class="card text-center">
-<p>Produtividade</p>
-<h2 id="kpiRate" class="text-xl font-bold">0%</h2>
-</div>
-
-</div>
-
-</div>
-
-</div>
-</div>
-
-<script>
-
-const today=new Date().toISOString().split('T')[0];
-
-function show(id){
-document.querySelectorAll("#today,#history,#dashboard")
-.forEach(x=>x.classList.add("hidden"));
-
-document.getElementById(id).classList.remove("hidden");
-
-if(id==="dashboard")updateKPI();
-}
-
-function getTasks(date=today){
-return JSON.parse(localStorage.getItem(date))||[];
-}
-
-function save(tasks,date=today){
-localStorage.setItem(date,JSON.stringify(tasks));
-}
-
-function addTask(){
-
-const input=document.getElementById("taskInput");
-const priority=document.getElementById("priority").value;
-
-if(!input.value)return;
-
-const tasks=getTasks();
-
-tasks.push({
-title:input.value,
-priority,
-done:false
-});
-
-save(tasks);
-input.value="";
-loadTasks();
-}
-
-function toggle(i){
-const tasks=getTasks();
-tasks[i].done=!tasks[i].done;
-save(tasks);
-loadTasks();
-}
-
-function removeTask(i){
-const tasks=getTasks();
-tasks.splice(i,1);
-save(tasks);
-loadTasks();
-}
-
-function editTask(i){
-const tasks=getTasks();
-const novo=prompt("Editar tarefa:",tasks[i].title);
-if(!novo)return;
-tasks[i].title=novo;
-save(tasks);
-loadTasks();
-}
-
-function render(tasks,target="taskList"){
-
-const ul=document.getElementById(target);
-ul.innerHTML="";
-
-tasks.forEach((t,i)=>{
-
-const color=
-t.priority==="alta"?"text-red-500":
-t.priority==="media"?"text-yellow-400":
-"text-green-400";
-
-ul.innerHTML+=`
-<li class="flex justify-between border-b py-2">
-
-<span class="${color} ${t.done?'line-through':''}">
-${t.title}
-</span>
-
-<div class="flex gap-2">
-<button onclick="toggle(${i})">✅</button>
-<button onclick="editTask(${i})">✏️</button>
-<button onclick="removeTask(${i})">🗑️</button>
-</div>
-
-</li>`;
-});
-}
-
-function loadTasks(){
-render(getTasks());
-}
-
-function loadHistory(){
-const date=document.getElementById("historyDate").value;
-render(getTasks(date),"historyList");
-}
-
-function updateKPI(){
-
-let total=0;
-let done=0;
-
-for(let i=0;i<5;i++){
-
-const d=new Date();
-d.setDate(d.getDate()-i);
-
-const key=d.toISOString().split('T')[0];
-const tasks=getTasks(key);
-
-total+=tasks.length;
-done+=tasks.filter(t=>t.done).length;
-}
-
-document.getElementById("kpiTotal").innerText=total;
-document.getElementById("kpiDone").innerText=done;
-document.getElementById("kpiPending").innerText=total-done;
-
-const rate=total?Math.round(done/total*100):0;
-document.getElementById("kpiRate").innerText=rate+"%";
-}
-
-function toggleDark(){
-document.body.classList.toggle("dark");
-}
-
-/* ===========================
-   MODO INTELIGENTE 17:48
-=========================== */
-
-function getTomorrow(){
- const d=new Date();
- d.setDate(d.getDate()+1);
- return d.toISOString().split('T')[0];
-}
-
-function closeDay(){
-
- const todayKey=today;
- const controlKey="closed_"+todayKey;
-
- if(localStorage.getItem(controlKey)) return;
-
- const tasks=getTasks(todayKey);
-
- const pendentes=tasks.filter(t=>!t.done);
-
- if(pendentes.length>0){
-
-   const tomorrow=getTomorrow();
-   const nextTasks=getTasks(tomorrow);
-
-   const merged=[...nextTasks,...pendentes];
-
-   save(merged,tomorrow);
- }
-
- localStorage.setItem(controlKey,true);
-
- console.log("✅ Dia encerrado automaticamente");
-}
-
-function intelligentClock(){
-
- const now=new Date();
-
- const hour=now.getHours();
- const minute=now.getMinutes();
-
- if(hour===17 && minute>=48){
-   closeDay();
- }
-
-}
-
-setInterval(intelligentClock,60000);
-
-loadTasks();
-intelligentClock();
-
-</script>
+<script src="script.js"></script>
 
 </body>
-
 </html>
