@@ -1,1 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Controle Diário</title>
 
+<script src="https://cdn.tailwindcss.com"></script>
+
+</head>
+
+<body class="bg-gray-100 p-6">
+
+<h1 class="text-2xl font-bold mb-4">
+📅 Controle Diário
+</h1>
+
+<div class="flex gap-2 mb-4">
+<input id="taskInput" class="border p-2 w-full" placeholder="Nova tarefa">
+
+<select id="priority" class="border p-2">
+<option value="alta">Alta</option>
+<option value="media">Média</option>
+<option value="baixa">Baixa</option>
+</select>
+
+<button onclick="addTask()" class="bg-blue-500 text-white px-4">
+Adicionar
+</button>
+</div>
+
+<ul id="taskList"></ul>
+
+<script>
+
+const today = new Date().toISOString().split('T')[0];
+
+function loadTasks(){
+   const data = JSON.parse(localStorage.getItem(today)) || [];
+   render(data);
+}
+
+function save(tasks){
+   localStorage.setItem(today, JSON.stringify(tasks));
+}
+
+function addTask(){
+
+   const input = document.getElementById("taskInput");
+   const priority = document.getElementById("priority").value;
+
+   if(!input.value) return;
+
+   const tasks = JSON.parse(localStorage.getItem(today)) || [];
+
+   tasks.push({
+      title: input.value,
+      priority,
+      done:false
+   });
+
+   save(tasks);
+   input.value="";
+   loadTasks();
+}
+
+function toggle(index){
+   const tasks = JSON.parse(localStorage.getItem(today));
+   tasks[index].done = !tasks[index].done;
+   save(tasks);
+   loadTasks();
+}
+
+function render(tasks){
+
+   const ul = document.getElementById("taskList");
+   ul.innerHTML="";
+
+   tasks.forEach((t,i)=>{
+
+      const color =
+        t.priority==="alta" ? "text-red-600" :
+        t.priority==="media" ? "text-yellow-600":
+        "text-green-600";
+
+      ul.innerHTML += `
+      <li class="bg-white p-3 mb-2 flex justify-between">
+         <span class="${color} ${t.done?'line-through':''}">
+            ${t.title}
+         </span>
+
+         <button onclick="toggle(${i})">
+            ${t.done?'✅':'⬜'}
+         </button>
+      </li>`;
+   });
+}
+
+loadTasks();
+
+</script>
+
+</body>
+</html>
