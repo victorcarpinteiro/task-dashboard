@@ -13,75 +13,61 @@ background:#f1f5f9;
 transition:.3s;
 }
 
-/* DARK MODE REAL */
 body.dark{
-background:#000000;
+background:#000;
 color:#e5e7eb;
 }
 
-/* CARDS */
 .card{
 background:white;
 border-radius:12px;
 padding:20px;
 box-shadow:0 4px 12px rgba(0,0,0,.1);
-transition:.3s;
 }
 
 .dark .card{
-background:#111111;
+background:#111;
 box-shadow:0 4px 20px rgba(0,0,0,.6);
 }
 
-/* SIDEBAR */
 .menu{
 width:220px;
-background:#111111;
+background:#111;
 color:white;
 min-height:100vh;
 }
 
 .dark .menu{
-background:#000000;
+background:#000;
 }
 
-/* BOTÕES MENU */
 .menu button{
 width:100%;
 text-align:left;
 padding:10px;
 border-radius:8px;
 margin-bottom:6px;
-transition:.2s;
 }
 
 .menu button:hover{
-background:#222222;
+background:#222;
 }
 
-.hidden{
-display:none;
-}
+.hidden{display:none;}
 
 </style>
-
 </head>
 
 <body id="body">
 
 <div class="flex">
 
-<!-- SIDEBAR -->
+<!-- MENU -->
 <div class="menu p-4">
 
 <div class="flex items-center gap-3 mb-6">
-
 <img src="logo.png" width="40">
-
-<h2 class="text-lg font-semibold">
-Olá, Victor
-</h2>
-
+<h2 class="text-lg font-semibold">Olá, Victor</h2>
 </div>
 
 <button onclick="show('today')">📋 Tarefas Hoje</button>
@@ -118,12 +104,17 @@ Adicionar
 </button>
 </div>
 
+<button onclick="fecharDia()" 
+class="bg-red-500 text-white px-4 py-2 rounded mb-4">
+Fechar Dia
+</button>
+
 <ul id="taskList"></ul>
 
 </div>
 </div>
 
-<!-- HISTÓRICO -->
+<!-- HISTORICO -->
 <div id="history" class="hidden">
 
 <h1 class="text-2xl font-bold mb-4">Histórico</h1>
@@ -144,26 +135,25 @@ Adicionar
 
 <div class="card text-center">
 <p>Total</p>
-<h2 id="kpiTotal" class="text-xl font-bold">0</h2>
+<h2 id="kpiTotal">0</h2>
 </div>
 
 <div class="card text-center">
 <p>Concluídas</p>
-<h2 id="kpiDone" class="text-xl font-bold text-green-500">0</h2>
+<h2 id="kpiDone" class="text-green-500">0</h2>
 </div>
 
 <div class="card text-center">
 <p>Pendentes</p>
-<h2 id="kpiPending" class="text-xl font-bold text-red-500">0</h2>
+<h2 id="kpiPending" class="text-red-500">0</h2>
 </div>
 
 <div class="card text-center">
 <p>Produtividade</p>
-<h2 id="kpiRate" class="text-xl font-bold">0%</h2>
+<h2 id="kpiRate">0%</h2>
 </div>
 
 </div>
-
 </div>
 
 </div>
@@ -171,7 +161,20 @@ Adicionar
 
 <script>
 
+/* ======================
+CONFIG
+======================*/
+
 const today=new Date().toISOString().split('T')[0];
+
+const tarefasFixas=[
+"Abertura Informe Diário",
+"Fechamento Informe Diário"
+];
+
+/* ======================
+NAVEGAÇÃO
+======================*/
 
 function show(id){
 document.querySelectorAll("#today,#history,#dashboard")
@@ -182,6 +185,10 @@ document.getElementById(id).classList.remove("hidden");
 if(id==="dashboard")updateKPI();
 }
 
+/* ======================
+STORAGE
+======================*/
+
 function getTasks(date=today){
 return JSON.parse(localStorage.getItem(date))||[];
 }
@@ -189,6 +196,32 @@ return JSON.parse(localStorage.getItem(date))||[];
 function save(tasks,date=today){
 localStorage.setItem(date,JSON.stringify(tasks));
 }
+
+/* ======================
+CRIAR DIA AUTOMATICO
+======================*/
+
+function criarDia(){
+
+let tasks=getTasks();
+
+if(tasks.length===0){
+
+tarefasFixas.forEach(t=>{
+tasks.push({
+title:t,
+priority:"media",
+done:false
+});
+});
+
+save(tasks);
+}
+}
+
+/* ======================
+ADICIONAR
+======================*/
 
 function addTask(){
 
@@ -210,12 +243,34 @@ input.value="";
 loadTasks();
 }
 
+/* ======================
+CHECK
+======================*/
+
 function toggle(i){
 const tasks=getTasks();
 tasks[i].done=!tasks[i].done;
 save(tasks);
 loadTasks();
 }
+
+/* ======================
+EDITAR
+======================*/
+
+function editTask(i){
+const tasks=getTasks();
+const novo=prompt("Editar tarefa:",tasks[i].title);
+if(!novo)return;
+
+tasks[i].title=novo;
+save(tasks);
+loadTasks();
+}
+
+/* ======================
+EXCLUIR
+======================*/
 
 function removeTask(i){
 const tasks=getTasks();
@@ -224,14 +279,21 @@ save(tasks);
 loadTasks();
 }
 
-function editTask(i){
-const tasks=getTasks();
-const novo=prompt("Editar tarefa:",tasks[i].title);
-if(!novo)return;
-tasks[i].title=novo;
-save(tasks);
-loadTasks();
+/* ======================
+ICONES PRIORIDADE
+======================*/
+
+function prioridadeIcon(p){
+if(p==="alta")return "🔴";
+if(p==="media")return "🟡";
+return "🟢";
 }
+
+/* ======================
+DRAG DROP
+======================*/
+
+let dragIndex=null;
 
 function render(tasks,target="taskList"){
 
@@ -240,16 +302,13 @@ ul.innerHTML="";
 
 tasks.forEach((t,i)=>{
 
-const color=
-t.priority==="alta"?"text-red-500":
-t.priority==="media"?"text-yellow-400":
-"text-green-400";
+const li=document.createElement("li");
+li.className="flex justify-between border-b py-2";
+li.draggable=true;
 
-ul.innerHTML+=`
-<li class="flex justify-between border-b py-2">
-
-<span class="${color} ${t.done?'line-through':''}">
-${t.title}
+li.innerHTML=`
+<span class="${t.done?'line-through':''}">
+${prioridadeIcon(t.priority)} ${t.title}
 </span>
 
 <div class="flex gap-2">
@@ -257,10 +316,30 @@ ${t.title}
 <button onclick="editTask(${i})">✏️</button>
 <button onclick="removeTask(${i})">🗑️</button>
 </div>
+`;
 
-</li>`;
+li.addEventListener("dragstart",()=>dragIndex=i);
+li.addEventListener("dragover",e=>e.preventDefault());
+li.addEventListener("drop",()=>trocar(i));
+
+ul.appendChild(li);
 });
 }
+
+function trocar(i){
+
+const tasks=getTasks();
+
+const item=tasks.splice(dragIndex,1)[0];
+tasks.splice(i,0,item);
+
+save(tasks);
+loadTasks();
+}
+
+/* ======================
+CARREGAR
+======================*/
 
 function loadTasks(){
 render(getTasks());
@@ -270,6 +349,53 @@ function loadHistory(){
 const date=document.getElementById("historyDate").value;
 render(getTasks(date),"historyList");
 }
+
+/* ======================
+FECHAR DIA ⭐
+======================*/
+
+function fecharDia(){
+
+const tasks=getTasks();
+
+const pendentes=tasks.filter(t=>!t.done);
+
+const amanha=new Date();
+amanha.setDate(amanha.getDate()+1);
+
+const keyAmanha=amanha.toISOString().split('T')[0];
+
+let tarefasAmanha=getTasks(keyAmanha);
+
+/* garantir tarefas fixas */
+tarefasFixas.forEach(t=>{
+if(!tarefasAmanha.some(x=>x.title===t)){
+tarefasAmanha.push({
+title:t,
+priority:"media",
+done:false
+});
+}
+});
+
+/* mover pendentes */
+pendentes.forEach(t=>{
+tarefasAmanha.push({
+title:t.title,
+priority:t.priority,
+done:false
+});
+});
+
+save(tarefasAmanha,keyAmanha);
+
+alert("✅ Dia fechado! Pendências movidas.");
+
+}
+
+/* ======================
+KPI
+======================*/
 
 function updateKPI(){
 
@@ -296,14 +422,19 @@ const rate=total?Math.round(done/total*100):0;
 document.getElementById("kpiRate").innerText=rate+"%";
 }
 
+/* ======================
+DARK MODE
+======================*/
+
 function toggleDark(){
 document.body.classList.toggle("dark");
 }
 
+/* START */
+criarDia();
 loadTasks();
 
 </script>
 
 </body>
-
 </html>
