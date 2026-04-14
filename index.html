@@ -62,11 +62,11 @@ background:#222;
 
 <div class="flex">
 
-<!-- MENU -->
+<!-- SIDEBAR -->
 <div class="menu p-4">
 
 <div class="flex items-center gap-3 mb-6">
-<img src="logo.png" width="40">
+<img src="assets/logo.png" width="40">
 <h2 class="text-lg font-semibold">Olá, Victor</h2>
 </div>
 
@@ -114,7 +114,7 @@ Fechar Dia
 </div>
 </div>
 
-<!-- HISTORICO -->
+<!-- HISTÓRICO -->
 <div id="history" class="hidden">
 
 <h1 class="text-2xl font-bold mb-4">Histórico</h1>
@@ -154,6 +154,7 @@ Fechar Dia
 </div>
 
 </div>
+
 </div>
 
 </div>
@@ -161,9 +162,7 @@ Fechar Dia
 
 <script>
 
-/* ======================
-CONFIG
-======================*/
+/* ================= CONFIG ================= */
 
 const today=new Date().toISOString().split('T')[0];
 
@@ -172,9 +171,7 @@ const tarefasFixas=[
 "Fechamento Informe Diário"
 ];
 
-/* ======================
-NAVEGAÇÃO
-======================*/
+/* ================= MENU ================= */
 
 function show(id){
 document.querySelectorAll("#today,#history,#dashboard")
@@ -185,9 +182,7 @@ document.getElementById(id).classList.remove("hidden");
 if(id==="dashboard")updateKPI();
 }
 
-/* ======================
-STORAGE
-======================*/
+/* ================= STORAGE ================= */
 
 function getTasks(date=today){
 return JSON.parse(localStorage.getItem(date))||[];
@@ -197,9 +192,7 @@ function save(tasks,date=today){
 localStorage.setItem(date,JSON.stringify(tasks));
 }
 
-/* ======================
-CRIAR DIA AUTOMATICO
-======================*/
+/* ================= CRIAR DIA ================= */
 
 function criarDia(){
 
@@ -210,7 +203,7 @@ if(tasks.length===0){
 tarefasFixas.forEach(t=>{
 tasks.push({
 title:t,
-priority:"media",
+priority:"alta",
 done:false
 });
 });
@@ -219,9 +212,7 @@ save(tasks);
 }
 }
 
-/* ======================
-ADICIONAR
-======================*/
+/* ================= ADICIONAR ================= */
 
 function addTask(){
 
@@ -243,9 +234,7 @@ input.value="";
 loadTasks();
 }
 
-/* ======================
-CHECK
-======================*/
+/* ================= CHECK ================= */
 
 function toggle(i){
 const tasks=getTasks();
@@ -254,23 +243,18 @@ save(tasks);
 loadTasks();
 }
 
-/* ======================
-EDITAR
-======================*/
+/* ================= EDITAR ================= */
 
 function editTask(i){
 const tasks=getTasks();
 const novo=prompt("Editar tarefa:",tasks[i].title);
 if(!novo)return;
-
 tasks[i].title=novo;
 save(tasks);
 loadTasks();
 }
 
-/* ======================
-EXCLUIR
-======================*/
+/* ================= EXCLUIR ================= */
 
 function removeTask(i){
 const tasks=getTasks();
@@ -279,9 +263,7 @@ save(tasks);
 loadTasks();
 }
 
-/* ======================
-ICONES PRIORIDADE
-======================*/
+/* ================= PRIORIDADE ICON ================= */
 
 function prioridadeIcon(p){
 if(p==="alta")return "🔴";
@@ -289,9 +271,7 @@ if(p==="media")return "🟡";
 return "🟢";
 }
 
-/* ======================
-DRAG DROP
-======================*/
+/* ================= DRAG DROP ================= */
 
 let dragIndex=null;
 
@@ -337,48 +317,56 @@ save(tasks);
 loadTasks();
 }
 
-/* ======================
-CARREGAR
-======================*/
+/* ================= LOAD ================= */
 
 function loadTasks(){
 render(getTasks());
 }
 
 function loadHistory(){
+
 const date=document.getElementById("historyDate").value;
-render(getTasks(date),"historyList");
+
+const data=
+JSON.parse(localStorage.getItem("history_"+date))||[];
+
+render(data,"historyList");
 }
 
-/* ======================
-FECHAR DIA ⭐
-======================*/
+/* ================= FECHAR DIA ================= */
 
 function fecharDia(){
 
-const tasks=getTasks();
+const hojeKey=today;
+const tasksHoje=getTasks(hojeKey);
 
-const pendentes=tasks.filter(t=>!t.done);
+/* salvar histórico */
+localStorage.setItem(
+"history_"+hojeKey,
+JSON.stringify(tasksHoje)
+);
 
+/* pendentes */
+const pendentes=tasksHoje.filter(t=>!t.done);
+
+/* criar amanhã */
 const amanha=new Date();
 amanha.setDate(amanha.getDate()+1);
 
 const keyAmanha=amanha.toISOString().split('T')[0];
 
-let tarefasAmanha=getTasks(keyAmanha);
+let tarefasAmanha=[];
 
-/* garantir tarefas fixas */
+/* tarefas fixas alta prioridade */
 tarefasFixas.forEach(t=>{
-if(!tarefasAmanha.some(x=>x.title===t)){
 tarefasAmanha.push({
 title:t,
-priority:"media",
+priority:"alta",
 done:false
 });
-}
 });
 
-/* mover pendentes */
+/* mover pendências */
 pendentes.forEach(t=>{
 tarefasAmanha.push({
 title:t.title,
@@ -389,13 +377,15 @@ done:false
 
 save(tarefasAmanha,keyAmanha);
 
-alert("✅ Dia fechado! Pendências movidas.");
+/* limpar hoje */
+localStorage.removeItem(hojeKey);
 
+alert("✅ Dia fechado com sucesso!");
+
+location.reload();
 }
 
-/* ======================
-KPI
-======================*/
+/* ================= KPI ================= */
 
 function updateKPI(){
 
@@ -407,8 +397,10 @@ for(let i=0;i<5;i++){
 const d=new Date();
 d.setDate(d.getDate()-i);
 
-const key=d.toISOString().split('T')[0];
-const tasks=getTasks(key);
+const key="history_"+d.toISOString().split('T')[0];
+
+const tasks=
+JSON.parse(localStorage.getItem(key))||[];
 
 total+=tasks.length;
 done+=tasks.filter(t=>t.done).length;
@@ -422,9 +414,7 @@ const rate=total?Math.round(done/total*100):0;
 document.getElementById("kpiRate").innerText=rate+"%";
 }
 
-/* ======================
-DARK MODE
-======================*/
+/* ================= DARK ================= */
 
 function toggleDark(){
 document.body.classList.toggle("dark");
