@@ -300,7 +300,59 @@ function toggleDark(){
 document.body.classList.toggle("dark");
 }
 
+/* ===========================
+   MODO INTELIGENTE 17:48
+=========================== */
+
+function getTomorrow(){
+ const d=new Date();
+ d.setDate(d.getDate()+1);
+ return d.toISOString().split('T')[0];
+}
+
+function closeDay(){
+
+ const todayKey=today;
+ const controlKey="closed_"+todayKey;
+
+ if(localStorage.getItem(controlKey)) return;
+
+ const tasks=getTasks(todayKey);
+
+ const pendentes=tasks.filter(t=>!t.done);
+
+ if(pendentes.length>0){
+
+   const tomorrow=getTomorrow();
+   const nextTasks=getTasks(tomorrow);
+
+   const merged=[...nextTasks,...pendentes];
+
+   save(merged,tomorrow);
+ }
+
+ localStorage.setItem(controlKey,true);
+
+ console.log("✅ Dia encerrado automaticamente");
+}
+
+function intelligentClock(){
+
+ const now=new Date();
+
+ const hour=now.getHours();
+ const minute=now.getMinutes();
+
+ if(hour===17 && minute>=48){
+   closeDay();
+ }
+
+}
+
+setInterval(intelligentClock,60000);
+
 loadTasks();
+intelligentClock();
 
 </script>
 
