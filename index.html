@@ -26,6 +26,29 @@ padding:20px;
 box-shadow:0 4px 12px rgba(0,0,0,.1);
 }
 
+.task-card{
+background:#f8fafc;
+border-radius:12px;
+padding:16px;
+margin-bottom:12px;
+box-shadow:0 2px 8px rgba(0,0,0,.08);
+}
+
+.dark .task-card{
+background:#111827;
+}
+
+.task-details{
+margin-top:12px;
+padding:12px;
+border-radius:10px;
+background:#f8fafc;
+}
+
+.dark .task-details{
+background:#111827;
+}
+
 .dark .card{
 background:#111;
 box-shadow:0 4px 20px rgba(0,0,0,.6);
@@ -172,6 +195,8 @@ const tarefasFixas=[
 "Fechamento Informe Diário"
 ];
 
+const expandedTasks=new Set();
+
 /* ================= MENU ================= */
 
 function show(id){
@@ -205,7 +230,8 @@ tarefasFixas.forEach(t=>{
 tasks.push({
 title:t,
 priority:"alta",
-done:false
+done:false,
+note:""
 });
 });
 
@@ -227,7 +253,8 @@ const tasks=getTasks();
 tasks.push({
 title:input.value,
 priority,
-done:false
+done:false,
+note:""
 });
 
 save(tasks);
@@ -261,7 +288,23 @@ function removeTask(i){
 const tasks=getTasks();
 tasks.splice(i,1);
 save(tasks);
+expandedTasks.delete(i);
 loadTasks();
+}
+
+function toggleDetails(i){
+if(expandedTasks.has(i)){
+expandedTasks.delete(i);
+}else{
+expandedTasks.add(i);
+}
+loadTasks();
+}
+
+function saveNote(value,i){
+const tasks=getTasks();
+tasks[i].note=value;
+save(tasks);
 }
 
 /* ================= PRIORIDADE ICON ================= */
@@ -284,20 +327,47 @@ ul.innerHTML="";
 tasks.forEach((t,i)=>{
 
 const li=document.createElement("li");
-li.className="flex justify-between border-b py-2";
+li.className="task-card";
 li.draggable=true;
 
-li.innerHTML=`
-<span class="${t.done?'line-through':''}">
-${prioridadeIcon(t.priority)} ${t.title}
-</span>
+const header=document.createElement("div");
+header.className="flex justify-between items-start gap-2";
 
-<div class="flex gap-2">
+const title=document.createElement("div");
+title.innerHTML=`<span class="${t.done?'line-through':''}">${prioridadeIcon(t.priority)} ${t.title}</span>`;
+
+const actions=document.createElement("div");
+actions.className="flex gap-2 flex-wrap";
+
+actions.innerHTML=`
 <button onclick="toggle(${i})">✅</button>
+<button onclick="toggleDetails(${i})">${expandedTasks.has(i)?'⬆️':'🗓️'}</button>
 <button onclick="editTask(${i})">✏️</button>
 <button onclick="removeTask(${i})">🗑️</button>
-</div>
 `;
+
+header.appendChild(title);
+header.appendChild(actions);
+li.appendChild(header);
+
+if(t.note && !expandedTasks.has(i)){
+const preview=document.createElement("div");
+preview.className="text-sm text-slate-500 mt-3";
+preview.textContent=t.note;
+li.appendChild(preview);
+}
+
+const details=document.createElement("div");
+details.className=`task-details ${expandedTasks.has(i)?'':'hidden'}`;
+
+const textarea=document.createElement("textarea");
+textarea.className="w-full border p-2 rounded text-black";
+textarea.placeholder="Adicionar observações";
+textarea.value=t.note||"";
+textarea.oninput=e=>saveNote(e.target.value,i);
+
+details.appendChild(textarea);
+li.appendChild(details);
 
 li.addEventListener("dragstart",()=>dragIndex=i);
 li.addEventListener("dragover",e=>e.preventDefault());
