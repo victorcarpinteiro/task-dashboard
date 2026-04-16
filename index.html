@@ -32,6 +32,12 @@ border-radius:12px;
 padding:16px;
 margin-bottom:12px;
 box-shadow:0 2px 8px rgba(0,0,0,.08);
+position:relative;
+cursor:pointer;
+}
+
+.task-card:hover{
+box-shadow:0 4px 12px rgba(0,0,0,.12);
 }
 
 .dark .task-card{
@@ -43,6 +49,31 @@ margin-top:12px;
 padding:12px;
 border-radius:10px;
 background:#f8fafc;
+}
+
+.dark .task-details{
+background:#111827;
+}
+
+.toggle-note-button{
+position:absolute;
+left:50%;
+bottom:16px;
+transform:translateX(-50%);
+background:#2563eb;
+color:white;
+border:none;
+padding:8px 14px;
+border-radius:9999px;
+font-size:0.9rem;
+opacity:0;
+transition:opacity .2s ease;
+pointer-events:none;
+}
+
+.task-card:hover .toggle-note-button{
+opacity:1;
+pointer-events:auto;
 }
 
 .dark .task-details{
@@ -340,15 +371,22 @@ const actions=document.createElement("div");
 actions.className="flex gap-2 flex-wrap";
 
 actions.innerHTML=`
-<button onclick="toggle(${i})">✅</button>
-<button onclick="toggleDetails(${i})">${expandedTasks.has(i)?'⬆️':'🗓️'}</button>
-<button onclick="editTask(${i})">✏️</button>
-<button onclick="removeTask(${i})">🗑️</button>
+<button onclick="event.stopPropagation(); toggle(${i})">✅</button>
+<button onclick="event.stopPropagation(); editTask(${i})">✏️</button>
+<button onclick="event.stopPropagation(); removeTask(${i})">🗑️</button>
 `;
 
 header.appendChild(title);
 header.appendChild(actions);
 li.appendChild(header);
+
+const hoverButton=document.createElement("button");
+hoverButton.className="toggle-note-button";
+hoverButton.textContent=expandedTasks.has(i)?'Fechar observações':'Abrir observações';
+hoverButton.onclick=e=>{ e.stopPropagation(); toggleDetails(i); };
+li.appendChild(hoverButton);
+
+li.onclick=()=>toggleDetails(i);
 
 if(t.note && !expandedTasks.has(i)){
 const preview=document.createElement("div");
