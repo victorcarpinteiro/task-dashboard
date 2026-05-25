@@ -2,13 +2,13 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Task Dashboard</title>
 <link rel="icon" href="assets/logo.png" type="image/png">
 
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
-
 body{
 background:#f1f5f9;
 transition:.3s;
@@ -28,61 +28,60 @@ box-shadow:0 4px 12px rgba(0,0,0,.1);
 
 .task-card{
 background:#f8fafc;
+border:1px solid #e2e8f0;
 border-radius:12px;
 padding:16px;
 margin-bottom:12px;
 box-shadow:0 2px 8px rgba(0,0,0,.08);
-position:relative;
-cursor:pointer;
 }
 
 .task-card:hover{
 box-shadow:0 4px 12px rgba(0,0,0,.12);
 }
 
-.dark .task-card{
-background:#111827;
+.task-label{
+color:#64748b;
+font-size:.75rem;
+font-weight:700;
+letter-spacing:.04em;
+text-transform:uppercase;
 }
 
-.task-details{
-margin-top:12px;
-padding:12px;
-border-radius:10px;
-background:#f8fafc;
+.task-value{
+color:#0f172a;
+font-size:.95rem;
 }
 
-.dark .task-details{
-background:#111827;
-}
-
-.toggle-note-button{
-position:absolute;
-left:50%;
-bottom:16px;
-transform:translateX(-50%);
-background:#2563eb;
-color:white;
-border:none;
-padding:8px 14px;
-border-radius:9999px;
-font-size:0.9rem;
-opacity:0;
-transition:opacity .2s ease;
-pointer-events:none;
-}
-
-.task-card:hover .toggle-note-button{
-opacity:1;
-pointer-events:auto;
-}
-
-.dark .task-details{
-background:#111827;
+.priority-select{
+border:1px solid #cbd5e1;
+border-radius:8px;
+padding:6px 8px;
+color:#0f172a;
+background:white;
 }
 
 .dark .card{
 background:#111;
 box-shadow:0 4px 20px rgba(0,0,0,.6);
+}
+
+.dark .task-card{
+background:#111827;
+border-color:#1f2937;
+}
+
+.dark .task-label{
+color:#94a3b8;
+}
+
+.dark .task-value{
+color:#e5e7eb;
+}
+
+.dark .priority-select{
+background:#020617;
+border-color:#334155;
+color:#e5e7eb;
 }
 
 .menu{
@@ -109,23 +108,22 @@ background:#222;
 }
 
 .hidden{display:none;}
-
 </style>
 </head>
 
 <body id="body">
 
-<div class="flex">
+<div class="flex min-h-screen">
 
 <!-- SIDEBAR -->
 <div class="menu p-4">
 
 <div class="flex items-center gap-3 mb-6">
-<img src="assets/logo.png" width="40">
+<img src="assets/logo.png" width="40" alt="Logo">
 <h2 class="text-lg font-semibold">Olá, Victor</h2>
 </div>
 
-<button onclick="show('today')">📋 Tarefas Hoje</button>
+<button onclick="show('openTasks')">📋 Tarefas em aberto</button>
 <button onclick="show('history')">📅 Histórico</button>
 <button onclick="show('dashboard')">📊 Dashboard</button>
 
@@ -136,19 +134,22 @@ background:#222;
 </div>
 
 <!-- CONTEÚDO -->
-<div class="flex-1 p-6">
+<main class="flex-1 p-6">
 
-<!-- HOJE -->
-<div id="today">
+<!-- TAREFAS EM ABERTO -->
+<section id="openTasks">
 
-<h1 class="text-2xl font-bold mb-4">Tarefas de Hoje</h1>
+<h1 class="text-2xl font-bold mb-4">Tarefas em aberto</h1>
 
 <div class="card">
 
-<div class="flex gap-2 mb-4">
-<input id="taskInput" class="border p-2 w-full text-black" placeholder="Nova tarefa">
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-2 mb-4">
+<input id="taskInput" class="border p-2 text-black rounded" placeholder="Nova tarefa">
+<input id="screenInput" class="border p-2 text-black rounded" placeholder="Tela">
+<input id="commentInput" class="border p-2 text-black rounded" placeholder="Comentário">
 
-<select id="priority" class="border p-2 text-black">
+<div class="flex gap-2">
+<select id="priority" class="border p-2 text-black rounded w-full">
 <option value="alta">Alta</option>
 <option value="media">Média</option>
 <option value="baixa">Baixa</option>
@@ -158,35 +159,31 @@ background:#222;
 Adicionar
 </button>
 </div>
-
-<button onclick="fecharDia()" 
-class="bg-red-500 text-white px-4 py-2 rounded mb-4">
-Fechar Dia
-</button>
+</div>
 
 <ul id="taskList"></ul>
 
 </div>
-</div>
+</section>
 
 <!-- HISTÓRICO -->
-<div id="history" class="hidden">
+<section id="history" class="hidden">
 
 <h1 class="text-2xl font-bold mb-4">Histórico</h1>
 
 <div class="card">
-<input type="date" id="historyDate" onchange="loadHistory()" class="border p-2 mb-4 text-black">
+<input type="date" id="historyDate" onchange="loadHistory()" class="border p-2 mb-4 text-black rounded">
 <ul id="historyList"></ul>
 </div>
 
-</div>
+</section>
 
 <!-- DASHBOARD -->
-<div id="dashboard" class="hidden">
+<section id="dashboard" class="hidden">
 
 <h1 class="text-2xl font-bold mb-4">Dashboard</h1>
 
-<div class="grid grid-cols-4 gap-4">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
 <div class="card text-center">
 <p>Total</p>
@@ -210,28 +207,52 @@ Fechar Dia
 
 </div>
 
-</div>
+</section>
 
-</div>
+</main>
 </div>
 
 <script>
-
 /* ================= CONFIG ================= */
 
-const today=new Date().toISOString().split('T')[0];
+const openTasksKey="open_tasks";
 
 const tarefasFixas=[
 "Abertura Informe Diário",
 "Fechamento Informe Diário"
 ];
 
-const expandedTasks=new Set();
+/* ================= HELPERS ================= */
+
+function localDate(){
+const date=new Date();
+const year=date.getFullYear();
+const month=String(date.getMonth()+1).padStart(2,"0");
+const day=String(date.getDate()).padStart(2,"0");
+return `${year}-${month}-${day}`;
+}
+
+function formatDate(date){
+if(!date)return "-";
+const [year,month,day]=date.split("-");
+return `${day}/${month}/${year}`;
+}
+
+function normalizeTask(task){
+return {
+title:task.title||"",
+screen:task.screen||"",
+comment:task.comment||task.note||"",
+includedAt:task.includedAt||localDate(),
+priority:task.priority||"media",
+done:Boolean(task.done)
+};
+}
 
 /* ================= MENU ================= */
 
 function show(id){
-document.querySelectorAll("#today,#history,#dashboard")
+document.querySelectorAll("#openTasks,#history,#dashboard")
 .forEach(x=>x.classList.add("hidden"));
 
 document.getElementById(id).classList.remove("hidden");
@@ -241,28 +262,29 @@ if(id==="dashboard")updateKPI();
 
 /* ================= STORAGE ================= */
 
-function getTasks(date=today){
-return JSON.parse(localStorage.getItem(date))||[];
+function getTasks(){
+const tasks=JSON.parse(localStorage.getItem(openTasksKey))||[];
+return tasks.map(normalizeTask);
 }
 
-function save(tasks,date=today){
-localStorage.setItem(date,JSON.stringify(tasks));
+function save(tasks){
+localStorage.setItem(openTasksKey,JSON.stringify(tasks.map(normalizeTask)));
 }
 
-/* ================= CRIAR DIA ================= */
+/* ================= CRIAR BASE ================= */
 
-function criarDia(){
-
-let tasks=getTasks();
+function criarBase(){
+const tasks=getTasks();
 
 if(tasks.length===0){
-
 tarefasFixas.forEach(t=>{
 tasks.push({
 title:t,
+screen:"Informe Diário",
+comment:"",
+includedAt:localDate(),
 priority:"alta",
-done:false,
-note:""
+done:false
 });
 });
 
@@ -273,72 +295,78 @@ save(tasks);
 /* ================= ADICIONAR ================= */
 
 function addTask(){
-
 const input=document.getElementById("taskInput");
+const screen=document.getElementById("screenInput");
+const comment=document.getElementById("commentInput");
 const priority=document.getElementById("priority").value;
 
-if(!input.value)return;
+if(!input.value.trim())return;
 
 const tasks=getTasks();
 
 tasks.push({
-title:input.value,
+title:input.value.trim(),
+screen:screen.value.trim(),
+comment:comment.value.trim(),
+includedAt:localDate(),
 priority,
-done:false,
-note:""
+done:false
 });
 
 save(tasks);
 input.value="";
+screen.value="";
+comment.value="";
 loadTasks();
 }
 
-/* ================= CHECK ================= */
+/* ================= AÇÕES ================= */
 
-function toggle(i){
+function toggleDone(i){
 const tasks=getTasks();
 tasks[i].done=!tasks[i].done;
 save(tasks);
 loadTasks();
 }
 
-/* ================= EDITAR ================= */
-
 function editTask(i){
 const tasks=getTasks();
-const novo=prompt("Editar tarefa:",tasks[i].title);
-if(!novo)return;
-tasks[i].title=novo;
+const task=tasks[i];
+
+const title=prompt("Editar tarefa:",task.title);
+if(title===null)return;
+
+const screen=prompt("Editar tela:",task.screen);
+if(screen===null)return;
+
+const comment=prompt("Editar comentário:",task.comment);
+if(comment===null)return;
+
+task.title=title.trim()||task.title;
+task.screen=screen.trim();
+task.comment=comment.trim();
+
 save(tasks);
 loadTasks();
 }
 
-/* ================= EXCLUIR ================= */
-
 function removeTask(i){
+if(!confirm("Deseja excluir esta tarefa?"))return;
+
 const tasks=getTasks();
 tasks.splice(i,1);
 save(tasks);
-expandedTasks.delete(i);
 loadTasks();
 }
 
-function toggleDetails(i){
-if(expandedTasks.has(i)){
-expandedTasks.delete(i);
-}else{
-expandedTasks.add(i);
-}
-loadTasks();
-}
-
-function saveNote(value,i){
+function changePriority(i,value){
 const tasks=getTasks();
-tasks[i].note=value;
+tasks[i].priority=value;
 save(tasks);
+loadTasks();
 }
 
-/* ================= PRIORIDADE ICON ================= */
+/* ================= PRIORIDADE ================= */
 
 function prioridadeIcon(p){
 if(p==="alta")return "🔴";
@@ -346,84 +374,124 @@ if(p==="media")return "🟡";
 return "🟢";
 }
 
-/* ================= DRAG DROP ================= */
+function prioridadeTexto(p){
+if(p==="alta")return "Alta";
+if(p==="media")return "Média";
+return "Baixa";
+}
 
-let dragIndex=null;
+/* ================= RENDER ================= */
 
-function render(tasks,target="taskList"){
+function createField(label,value){
+const wrapper=document.createElement("div");
 
+const fieldLabel=document.createElement("p");
+fieldLabel.className="task-label";
+fieldLabel.textContent=label;
+
+const fieldValue=document.createElement("p");
+fieldValue.className="task-value break-words";
+fieldValue.textContent=value||"-";
+
+wrapper.appendChild(fieldLabel);
+wrapper.appendChild(fieldValue);
+
+return wrapper;
+}
+
+function render(tasks,target="taskList",readonly=false){
 const ul=document.getElementById(target);
 ul.innerHTML="";
 
-tasks.forEach((t,i)=>{
+tasks.forEach((task,i)=>{
+const t=normalizeTask(task);
 
 const li=document.createElement("li");
 li.className="task-card";
-li.draggable=true;
 
 const header=document.createElement("div");
-header.className="flex justify-between items-start gap-2";
+header.className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4";
 
 const title=document.createElement("div");
-title.innerHTML=`<span class="${t.done?'line-through':''}">${prioridadeIcon(t.priority)} ${t.title}</span>`;
+const titleLabel=document.createElement("p");
+titleLabel.className="task-label";
+titleLabel.textContent="Tarefa";
+
+const titleValue=document.createElement("h3");
+titleValue.className=`text-lg font-semibold ${t.done?"line-through text-slate-500":"task-value"}`;
+titleValue.textContent=`${prioridadeIcon(t.priority)} ${t.title}`;
+
+title.appendChild(titleLabel);
+title.appendChild(titleValue);
 
 const actions=document.createElement("div");
 actions.className="flex gap-2 flex-wrap";
 
-actions.innerHTML=`
-<button onclick="event.stopPropagation(); toggle(${i})">✅</button>
-<button onclick="event.stopPropagation(); editTask(${i})">✏️</button>
-<button onclick="event.stopPropagation(); removeTask(${i})">🗑️</button>
-`;
+if(!readonly){
+const doneButton=document.createElement("button");
+doneButton.className="bg-green-500 text-white px-3 py-2 rounded";
+doneButton.title="Concluir tarefa";
+doneButton.textContent=t.done?"Reabrir":"Concluir";
+doneButton.onclick=()=>toggleDone(i);
+
+const editButton=document.createElement("button");
+editButton.className="bg-slate-600 text-white px-3 py-2 rounded";
+editButton.title="Editar tarefa";
+editButton.textContent="Editar";
+editButton.onclick=()=>editTask(i);
+
+const removeButton=document.createElement("button");
+removeButton.className="bg-red-500 text-white px-3 py-2 rounded";
+removeButton.title="Excluir tarefa";
+removeButton.textContent="Excluir";
+removeButton.onclick=()=>removeTask(i);
+
+actions.appendChild(doneButton);
+actions.appendChild(editButton);
+actions.appendChild(removeButton);
+}
 
 header.appendChild(title);
 header.appendChild(actions);
 li.appendChild(header);
 
-const hoverButton=document.createElement("button");
-hoverButton.className="toggle-note-button";
-hoverButton.textContent=expandedTasks.has(i)?'Fechar observações':'Abrir observações';
-hoverButton.onclick=e=>{ e.stopPropagation(); toggleDetails(i); };
-li.appendChild(hoverButton);
+const grid=document.createElement("div");
+grid.className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4";
 
-li.onclick=()=>toggleDetails(i);
+grid.appendChild(createField("Tela",t.screen));
+grid.appendChild(createField("Comentário",t.comment));
+grid.appendChild(createField("Data de inclusão",formatDate(t.includedAt)));
 
-if(t.note && !expandedTasks.has(i)){
-const preview=document.createElement("div");
-preview.className="text-sm text-slate-500 mt-3";
-preview.textContent=t.note;
-li.appendChild(preview);
+const priorityField=document.createElement("div");
+const priorityLabel=document.createElement("p");
+priorityLabel.className="task-label";
+priorityLabel.textContent="Prioridade";
+
+if(readonly){
+const priorityValue=document.createElement("p");
+priorityValue.className="task-value";
+priorityValue.textContent=prioridadeTexto(t.priority);
+priorityField.appendChild(priorityLabel);
+priorityField.appendChild(priorityValue);
+}else{
+const prioritySelect=document.createElement("select");
+prioritySelect.className="priority-select mt-1";
+prioritySelect.innerHTML=`
+<option value="alta">Alta</option>
+<option value="media">Média</option>
+<option value="baixa">Baixa</option>
+`;
+prioritySelect.value=t.priority;
+prioritySelect.onchange=e=>changePriority(i,e.target.value);
+priorityField.appendChild(priorityLabel);
+priorityField.appendChild(prioritySelect);
 }
 
-const details=document.createElement("div");
-details.className=`task-details ${expandedTasks.has(i)?'':'hidden'}`;
-
-const textarea=document.createElement("textarea");
-textarea.className="w-full border p-2 rounded text-black";
-textarea.placeholder="Adicionar observações";
-textarea.value=t.note||"";
-textarea.oninput=e=>saveNote(e.target.value,i);
-
-details.appendChild(textarea);
-li.appendChild(details);
-
-li.addEventListener("dragstart",()=>dragIndex=i);
-li.addEventListener("dragover",e=>e.preventDefault());
-li.addEventListener("drop",()=>trocar(i));
+grid.appendChild(priorityField);
+li.appendChild(grid);
 
 ul.appendChild(li);
 });
-}
-
-function trocar(i){
-
-const tasks=getTasks();
-
-const item=tasks.splice(dragIndex,1)[0];
-tasks.splice(i,0,item);
-
-save(tasks);
-loadTasks();
 }
 
 /* ================= LOAD ================= */
@@ -433,87 +501,17 @@ render(getTasks());
 }
 
 function loadHistory(){
-
 const date=document.getElementById("historyDate").value;
-
-const data=
-JSON.parse(localStorage.getItem("history_"+date))||[];
-
-render(data,"historyList");
-}
-
-/* ================= FECHAR DIA ================= */
-
-function fecharDia(){
-
-const hojeKey=today;
-const tasksHoje=getTasks(hojeKey);
-
-/* salvar histórico */
-localStorage.setItem(
-"history_"+hojeKey,
-JSON.stringify(tasksHoje)
-);
-
-/* pendentes */
-const pendentes=tasksHoje.filter(t=>!t.done);
-
-/* criar amanhã */
-const amanha=new Date();
-amanha.setDate(amanha.getDate()+1);
-
-const keyAmanha=amanha.toISOString().split('T')[0];
-
-let tarefasAmanha=[];
-
-/* tarefas fixas alta prioridade */
-tarefasFixas.forEach(t=>{
-tarefasAmanha.push({
-title:t,
-priority:"alta",
-done:false
-});
-});
-
-/* mover pendências */
-pendentes.forEach(t=>{
-tarefasAmanha.push({
-title:t.title,
-priority:t.priority,
-done:false
-});
-});
-
-save(tarefasAmanha,keyAmanha);
-
-/* limpar hoje */
-localStorage.removeItem(hojeKey);
-
-alert("✅ Dia fechado com sucesso!");
-
-location.reload();
+const data=JSON.parse(localStorage.getItem("history_"+date))||[];
+render(data,"historyList",true);
 }
 
 /* ================= KPI ================= */
 
 function updateKPI(){
-
-let total=0;
-let done=0;
-
-for(let i=0;i<5;i++){
-
-const d=new Date();
-d.setDate(d.getDate()-i);
-
-const key="history_"+d.toISOString().split('T')[0];
-
-const tasks=
-JSON.parse(localStorage.getItem(key))||[];
-
-total+=tasks.length;
-done+=tasks.filter(t=>t.done).length;
-}
+const tasks=getTasks();
+const total=tasks.length;
+const done=tasks.filter(t=>t.done).length;
 
 document.getElementById("kpiTotal").innerText=total;
 document.getElementById("kpiDone").innerText=done;
@@ -527,12 +525,19 @@ document.getElementById("kpiRate").innerText=rate+"%";
 
 function toggleDark(){
 document.body.classList.toggle("dark");
+localStorage.setItem("dark_mode",document.body.classList.contains("dark"));
+}
+
+function loadTheme(){
+if(localStorage.getItem("dark_mode")==="true"){
+document.body.classList.add("dark");
+}
 }
 
 /* START */
-criarDia();
+loadTheme();
+criarBase();
 loadTasks();
-
 </script>
 
 </body>
