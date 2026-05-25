@@ -30,8 +30,7 @@ box-shadow:0 4px 12px rgba(0,0,0,.1);
 background:#f8fafc;
 border:1px solid #e2e8f0;
 border-radius:12px;
-padding:16px;
-margin-bottom:12px;
+padding:12px;
 box-shadow:0 2px 8px rgba(0,0,0,.08);
 }
 
@@ -99,13 +98,19 @@ background:white;
 }
 
 .comment-box{
-min-height:96px;
+min-height:72px;
 resize:vertical;
 border:1px solid #cbd5e1;
 border-radius:8px;
-padding:10px;
+padding:8px;
 color:#0f172a;
 background:white;
+}
+
+#taskList{
+display:grid;
+grid-template-columns:repeat(1,minmax(0,1fr));
+gap:12px;
 }
 
 .dark .card{
@@ -174,6 +179,18 @@ background:#222;
 }
 
 .hidden{display:none;}
+
+@media(min-width:900px){
+#taskList{
+grid-template-columns:repeat(2,minmax(0,1fr));
+}
+}
+
+@media(min-width:1280px){
+#taskList{
+grid-template-columns:repeat(3,minmax(0,1fr));
+}
+}
 
 @media(max-width:900px){
 .history-line{
@@ -602,7 +619,7 @@ const li=document.createElement("li");
 li.className="task-card";
 
 const header=document.createElement("div");
-header.className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4";
+header.className="flex flex-col gap-3 mb-3";
 
 const title=document.createElement("div");
 const titleLabel=document.createElement("p");
@@ -610,7 +627,7 @@ titleLabel.className="task-label";
 titleLabel.textContent="Tarefa";
 
 const titleValue=document.createElement("h3");
-titleValue.className=`text-lg font-semibold ${t.done?"line-through text-slate-500":"task-value"}`;
+titleValue.className=`text-base font-semibold break-words ${t.done?"line-through text-slate-500":"task-value"}`;
 titleValue.textContent=`${prioridadeIcon(t.priority)} ${t.title}`;
 
 title.appendChild(titleLabel);
@@ -621,19 +638,19 @@ actions.className="flex gap-2 flex-wrap";
 
 if(!readonly){
 const doneButton=document.createElement("button");
-doneButton.className="bg-green-500 text-white px-3 py-2 rounded";
+doneButton.className="bg-green-500 text-white px-3 py-1.5 rounded text-sm";
 doneButton.title="Finalizar tarefa";
 doneButton.textContent="Finalizar";
 doneButton.onclick=()=>finishTask(i);
 
 const editButton=document.createElement("button");
-editButton.className="bg-slate-600 text-white px-3 py-2 rounded";
+editButton.className="bg-slate-600 text-white px-3 py-1.5 rounded text-sm";
 editButton.title="Editar tarefa";
 editButton.textContent="Editar";
 editButton.onclick=()=>editTask(i);
 
 const removeButton=document.createElement("button");
-removeButton.className="bg-red-500 text-white px-3 py-2 rounded";
+removeButton.className="bg-red-500 text-white px-3 py-1.5 rounded text-sm";
 removeButton.title="Excluir tarefa";
 removeButton.textContent="Excluir";
 removeButton.onclick=()=>removeTask(i);
@@ -648,7 +665,7 @@ header.appendChild(actions);
 li.appendChild(header);
 
 const grid=document.createElement("div");
-grid.className="grid grid-cols-1 md:grid-cols-3 gap-4";
+grid.className="grid grid-cols-1 sm:grid-cols-3 gap-3";
 
 grid.appendChild(createField("Data de inclusão",formatDate(t.includedAt)));
 
