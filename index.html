@@ -32,10 +32,21 @@ border:1px solid #e2e8f0;
 border-radius:12px;
 padding:12px;
 box-shadow:0 2px 8px rgba(0,0,0,.08);
+cursor:grab;
 }
 
 .task-card:hover{
 box-shadow:0 4px 12px rgba(0,0,0,.12);
+}
+
+.task-card.dragging{
+opacity:.55;
+cursor:grabbing;
+}
+
+.task-card.drag-over{
+border-color:#3b82f6;
+box-shadow:0 0 0 3px rgba(59,130,246,.18),0 4px 12px rgba(0,0,0,.12);
 }
 
 .history-line{
@@ -533,6 +544,22 @@ tasks[i].comment=value;
 save(tasks);
 }
 
+function moveTask(fromIndex,toIndex){
+if(fromIndex===toIndex || fromIndex<0 || toIndex<0)return;
+
+const tasks=getTasks();
+if(fromIndex>=tasks.length || toIndex>=tasks.length)return;
+
+const [task]=tasks.splice(fromIndex,1);
+tasks.splice(toIndex,0,task);
+save(tasks);
+loadTasks();
+}
+
+function isInteractiveElement(element){
+return Boolean(element.closest("button,input,select,textarea,label"));
+}
+
 function recoverSelectedHistory(){
 if(selectedHistory.size===0){
 alert("Selecione uma tarefa concluída para recuperar.");
@@ -612,11 +639,68 @@ function render(tasks,target="taskList",readonly=false){
 const ul=document.getElementById(target);
 ul.innerHTML="";
 
+if(!readonly && target==="taskList"){
+ul.ondragover=e=>{
+e.preventDefault();
+};
+
+ul.ondrop=e=>{
+e.preventDefault();
+const draggedIndex=Number(e.dataTransfer.getData("text/plain"));
+const droppedOnCard=e.target.closest(".task-card");
+if(!droppedOnCard && tasks.length>0){
+moveTask(draggedIndex,tasks.length-1);
+}
+};
+}
+
 tasks.forEach((task,i)=>{
 const t=normalizeTask(task);
 
 const li=document.createElement("li");
 li.className="task-card";
+
+if(!readonly && target==="taskList"){
+li.draggable=true;
+li.dataset.index=i;
+li.title="Arraste para reposicionar";
+
+li.ondragstart=e=>{
+if(isInteractiveElement(e.target)){
+e.preventDefault();
+return;
+}
+li.classList.add("dragging");
+e.dataTransfer.effectAllowed="move";
+e.dataTransfer.setData("text/plain",String(i));
+};
+
+li.ondragend=()=>{
+li.classList.remove("dragging");
+document.querySelectorAll(".task-card.drag-over")
+.forEach(card=>card.classList.remove("drag-over"));
+};
+
+li.ondragover=e=>{
+e.preventDefault();
+const draggedIndex=Number(e.dataTransfer.getData("text/plain"));
+if(draggedIndex!==i){
+li.classList.add("drag-over");
+}
+};
+
+li.ondragleave=()=>{
+li.classList.remove("drag-over");
+};
+
+li.ondrop=e=>{
+e.preventDefault();
+e.stopPropagation();
+li.classList.remove("drag-over");
+const draggedIndex=Number(e.dataTransfer.getData("text/plain"));
+moveTask(draggedIndex,i);
+};
+}
 
 const header=document.createElement("div");
 header.className="flex flex-col gap-3 mb-3";
