@@ -41,7 +41,7 @@ box-shadow:0 4px 12px rgba(0,0,0,.12);
 
 .history-line{
 display:grid;
-grid-template-columns:1.4fr 1fr 1.6fr .8fr .9fr .9fr;
+grid-template-columns:40px 1.5fr 1.8fr .8fr .9fr .9fr;
 gap:12px;
 align-items:center;
 padding:12px;
@@ -50,7 +50,7 @@ border-bottom:1px solid #e2e8f0;
 
 .history-header{
 display:grid;
-grid-template-columns:1.4fr 1fr 1.6fr .8fr .9fr .9fr;
+grid-template-columns:40px 1.5fr 1.8fr .8fr .9fr .9fr;
 gap:12px;
 padding:0 12px 8px;
 }
@@ -98,6 +98,16 @@ color:#0f172a;
 background:white;
 }
 
+.comment-box{
+min-height:96px;
+resize:vertical;
+border:1px solid #cbd5e1;
+border-radius:8px;
+padding:10px;
+color:#0f172a;
+background:white;
+}
+
 .dark .card{
 background:#111;
 box-shadow:0 4px 20px rgba(0,0,0,.6);
@@ -129,6 +139,12 @@ color:#e5e7eb;
 }
 
 .dark .priority-select{
+background:#020617;
+border-color:#334155;
+color:#e5e7eb;
+}
+
+.dark .comment-box{
 background:#020617;
 border-color:#334155;
 color:#e5e7eb;
@@ -220,9 +236,8 @@ display:none;
 
 <div class="card">
 
-<div class="grid grid-cols-1 lg:grid-cols-4 gap-2 mb-4">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-2 mb-4">
 <input id="taskInput" class="border p-2 text-black rounded" placeholder="Nova tarefa">
-<input id="screenInput" class="border p-2 text-black rounded" placeholder="Tela">
 <input id="commentInput" class="border p-2 text-black rounded" placeholder="Comentário">
 
 <div class="flex gap-2">
@@ -249,6 +264,9 @@ Adicionar
 <h1 class="text-2xl font-bold mb-4">Histórico</h1>
 
 <div class="card">
+<button onclick="recoverSelectedHistory()" class="bg-blue-500 text-white px-4 py-2 rounded mb-4">
+Recuperar
+</button>
 <div id="historyList"></div>
 </div>
 
@@ -292,6 +310,7 @@ Adicionar
 /* ================= CONFIG ================= */
 
 const openTasksKey="open_tasks";
+const selectedHistory=new Set();
 
 const tarefasFixas=[
 "Abertura Informe Diário",
@@ -317,7 +336,6 @@ return `${day}/${month}/${year}`;
 function normalizeTask(task){
 return {
 title:task.title||"",
-screen:task.screen||"",
 comment:task.comment||task.note||"",
 includedAt:task.includedAt||localDate(),
 closedAt:task.closedAt||"",
@@ -376,6 +394,27 @@ history=history.concat(tasks.map(normalizeTask));
 return history;
 }
 
+function getAllHistoryEntries(){
+let history=[];
+
+for(let i=0;i<localStorage.length;i++){
+const key=localStorage.key(i);
+if(key && key.startsWith("history_")){
+const tasks=JSON.parse(localStorage.getItem(key))||[];
+tasks.forEach((task,index)=>{
+history.push({
+key,
+index,
+id:`${key}:${index}`,
+task:normalizeTask(task)
+});
+});
+}
+}
+
+return history;
+}
+
 /* ================= CRIAR BASE ================= */
 
 function criarBase(){
@@ -385,7 +424,6 @@ if(tasks.length===0){
 tarefasFixas.forEach(t=>{
 tasks.push({
 title:t,
-screen:"Informe Diário",
 comment:"",
 includedAt:localDate(),
 priority:"alta",
@@ -401,7 +439,6 @@ save(tasks);
 
 function addTask(){
 const input=document.getElementById("taskInput");
-const screen=document.getElementById("screenInput");
 const comment=document.getElementById("commentInput");
 const priority=document.getElementById("priority").value;
 
@@ -411,7 +448,6 @@ const tasks=getTasks();
 
 tasks.push({
 title:input.value.trim(),
-screen:screen.value.trim(),
 comment:comment.value.trim(),
 includedAt:localDate(),
 priority,
@@ -420,7 +456,6 @@ done:false
 
 save(tasks);
 input.value="";
-screen.value="";
 comment.value="";
 loadTasks();
 }
@@ -453,15 +488,7 @@ const task=tasks[i];
 const title=prompt("Editar tarefa:",task.title);
 if(title===null)return;
 
-const screen=prompt("Editar tela:",task.screen);
-if(screen===null)return;
-
-const comment=prompt("Editar comentário:",task.comment);
-if(comment===null)return;
-
 task.title=title.trim()||task.title;
-task.screen=screen.trim();
-task.comment=comment.trim();
 
 save(tasks);
 loadTasks();
@@ -481,6 +508,54 @@ const tasks=getTasks();
 tasks[i].priority=value;
 save(tasks);
 loadTasks();
+}
+
+function saveComment(i,value){
+const tasks=getTasks();
+tasks[i].comment=value;
+save(tasks);
+}
+
+function recoverSelectedHistory(){
+if(selectedHistory.size===0){
+alert("Selecione uma tarefa concluída para recuperar.");
+return;
+}
+
+const entries=getAllHistoryEntries()
+.filter(entry=>selectedHistory.has(entry.id));
+
+if(entries.length===0)return;
+
+const openTasks=getTasks();
+
+entries.forEach(entry=>{
+openTasks.push({
+...entry.task,
+done:false,
+closedAt:""
+});
+});
+
+save(openTasks);
+
+const byKey={};
+entries.forEach(entry=>{
+if(!byKey[entry.key])byKey[entry.key]=[];
+byKey[entry.key].push(entry.index);
+});
+
+Object.keys(byKey).forEach(key=>{
+const tasks=JSON.parse(localStorage.getItem(key))||[];
+byKey[key]
+.sort((a,b)=>b-a)
+.forEach(index=>tasks.splice(index,1));
+localStorage.setItem(key,JSON.stringify(tasks));
+});
+
+selectedHistory.clear();
+loadTasks();
+loadHistory();
 }
 
 /* ================= PRIORIDADE ================= */
@@ -573,10 +648,8 @@ header.appendChild(actions);
 li.appendChild(header);
 
 const grid=document.createElement("div");
-grid.className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4";
+grid.className="grid grid-cols-1 md:grid-cols-3 gap-4";
 
-grid.appendChild(createField("Tela",t.screen));
-grid.appendChild(createField("Comentário",t.comment));
 grid.appendChild(createField("Data de inclusão",formatDate(t.includedAt)));
 
 const priorityField=document.createElement("div");
@@ -605,7 +678,27 @@ priorityField.appendChild(prioritySelect);
 }
 
 grid.appendChild(priorityField);
+grid.appendChild(createField("Status",t.done?"Finalizada":"Em aberto"));
 li.appendChild(grid);
+
+if(!readonly){
+const commentWrapper=document.createElement("div");
+commentWrapper.className="mt-4";
+
+const commentLabel=document.createElement("p");
+commentLabel.className="task-label mb-1";
+commentLabel.textContent="Comentário";
+
+const commentTextarea=document.createElement("textarea");
+commentTextarea.className="comment-box w-full";
+commentTextarea.placeholder="Adicionar comentário";
+commentTextarea.value=t.comment||"";
+commentTextarea.oninput=e=>saveComment(i,e.target.value);
+
+commentWrapper.appendChild(commentLabel);
+commentWrapper.appendChild(commentTextarea);
+li.appendChild(commentWrapper);
+}
 
 ul.appendChild(li);
 });
@@ -618,7 +711,7 @@ render(getTasks());
 }
 
 function loadHistory(){
-const data=getAllHistoryTasks();
+const data=getAllHistoryEntries();
 renderHistory(data);
 }
 
@@ -638,11 +731,11 @@ wrapper.appendChild(cellValue);
 return wrapper;
 }
 
-function renderHistory(tasks){
+function renderHistory(entries){
 const list=document.getElementById("historyList");
 list.innerHTML="";
 
-if(tasks.length===0){
+if(entries.length===0){
 const empty=document.createElement("p");
 empty.className="text-slate-500";
 empty.textContent="Nenhuma tarefa finalizada.";
@@ -653,7 +746,7 @@ return;
 const header=document.createElement("div");
 header.className="history-header";
 
-["Tarefa","Tela","Comentário","Prioridade","Inclusão","Encerramento"].forEach(label=>{
+["","Tarefa","Comentário","Prioridade","Inclusão","Encerramento"].forEach(label=>{
 const span=document.createElement("span");
 span.textContent=label;
 header.appendChild(span);
@@ -661,12 +754,27 @@ header.appendChild(span);
 
 list.appendChild(header);
 
-tasks.map(normalizeTask).forEach(task=>{
+entries.forEach(entry=>{
+const task=normalizeTask(entry.task);
 const line=document.createElement("div");
 line.className="history-line";
 
+const checkboxWrapper=document.createElement("div");
+const checkbox=document.createElement("input");
+checkbox.type="checkbox";
+checkbox.title="Selecionar tarefa concluída";
+checkbox.checked=selectedHistory.has(entry.id);
+checkbox.onchange=e=>{
+if(e.target.checked){
+selectedHistory.add(entry.id);
+}else{
+selectedHistory.delete(entry.id);
+}
+};
+checkboxWrapper.appendChild(checkbox);
+
+line.appendChild(checkboxWrapper);
 line.appendChild(createHistoryCell("Tarefa",`${prioridadeIcon(task.priority)} ${task.title}`));
-line.appendChild(createHistoryCell("Tela",task.screen));
 line.appendChild(createHistoryCell("Comentário",task.comment));
 line.appendChild(createHistoryCell("Prioridade",prioridadeTexto(task.priority)));
 line.appendChild(createHistoryCell("Inclusão",formatDate(task.includedAt)));
