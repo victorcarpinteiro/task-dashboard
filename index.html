@@ -39,6 +39,44 @@ box-shadow:0 2px 8px rgba(0,0,0,.08);
 box-shadow:0 4px 12px rgba(0,0,0,.12);
 }
 
+.history-line{
+display:grid;
+grid-template-columns:1.4fr 1fr 1.6fr .8fr .9fr .9fr;
+gap:12px;
+align-items:center;
+padding:12px;
+border-bottom:1px solid #e2e8f0;
+}
+
+.history-header{
+display:grid;
+grid-template-columns:1.4fr 1fr 1.6fr .8fr .9fr .9fr;
+gap:12px;
+padding:0 12px 8px;
+}
+
+.history-header span{
+color:#64748b;
+font-size:.75rem;
+font-weight:700;
+letter-spacing:.04em;
+text-transform:uppercase;
+}
+
+.history-line:first-child{
+border-top:1px solid #e2e8f0;
+}
+
+.history-line span{
+font-size:.9rem;
+color:#0f172a;
+word-break:break-word;
+}
+
+.history-line .history-label{
+display:none;
+}
+
 .task-label{
 color:#64748b;
 font-size:.75rem;
@@ -68,6 +106,18 @@ box-shadow:0 4px 20px rgba(0,0,0,.6);
 .dark .task-card{
 background:#111827;
 border-color:#1f2937;
+}
+
+.dark .history-line{
+border-color:#1f2937;
+}
+
+.dark .history-line span{
+color:#e5e7eb;
+}
+
+.dark .history-header span{
+color:#94a3b8;
 }
 
 .dark .task-label{
@@ -108,6 +158,33 @@ background:#222;
 }
 
 .hidden{display:none;}
+
+@media(max-width:900px){
+.history-line{
+grid-template-columns:1fr;
+gap:4px;
+border:1px solid #e2e8f0;
+border-radius:12px;
+margin-bottom:10px;
+}
+
+.history-line:first-child{
+border-top:1px solid #e2e8f0;
+}
+
+.history-line .history-label{
+display:block;
+color:#64748b;
+font-size:.72rem;
+font-weight:700;
+letter-spacing:.04em;
+text-transform:uppercase;
+}
+
+.history-header{
+display:none;
+}
+}
 </style>
 </head>
 
@@ -173,7 +250,7 @@ Adicionar
 
 <div class="card">
 <input type="date" id="historyDate" onchange="loadHistory()" class="border p-2 mb-4 text-black rounded">
-<ul id="historyList"></ul>
+<div id="historyList"></div>
 </div>
 
 </section>
@@ -244,9 +321,14 @@ title:task.title||"",
 screen:task.screen||"",
 comment:task.comment||task.note||"",
 includedAt:task.includedAt||localDate(),
+closedAt:task.closedAt||"",
 priority:task.priority||"media",
 done:Boolean(task.done)
 };
+}
+
+function getHistoryKey(date){
+return "history_"+date;
 }
 
 /* ================= MENU ================= */
@@ -257,6 +339,7 @@ document.querySelectorAll("#openTasks,#history,#dashboard")
 
 document.getElementById(id).classList.remove("hidden");
 
+if(id==="history")loadHistory();
 if(id==="dashboard")updateKPI();
 }
 
@@ -269,6 +352,29 @@ return tasks.map(normalizeTask);
 
 function save(tasks){
 localStorage.setItem(openTasksKey,JSON.stringify(tasks.map(normalizeTask)));
+}
+
+function getHistory(date){
+const tasks=JSON.parse(localStorage.getItem(getHistoryKey(date)))||[];
+return tasks.map(normalizeTask);
+}
+
+function saveHistory(tasks,date){
+localStorage.setItem(getHistoryKey(date),JSON.stringify(tasks.map(normalizeTask)));
+}
+
+function getAllHistoryTasks(){
+let history=[];
+
+for(let i=0;i<localStorage.length;i++){
+const key=localStorage.key(i);
+if(key && key.startsWith("history_")){
+const tasks=JSON.parse(localStorage.getItem(key))||[];
+history=history.concat(tasks.map(normalizeTask));
+}
+}
+
+return history;
 }
 
 /* ================= CRIAR BASE ================= */
@@ -322,10 +428,22 @@ loadTasks();
 
 /* ================= AÇÕES ================= */
 
-function toggleDone(i){
+function finishTask(i){
 const tasks=getTasks();
-tasks[i].done=!tasks[i].done;
+const closedAt=localDate();
+const finishedTask={
+...tasks[i],
+done:true,
+closedAt
+};
+
+tasks.splice(i,1);
 save(tasks);
+
+const history=getHistory(closedAt);
+history.push(finishedTask);
+saveHistory(history,closedAt);
+
 loadTasks();
 }
 
@@ -430,9 +548,9 @@ actions.className="flex gap-2 flex-wrap";
 if(!readonly){
 const doneButton=document.createElement("button");
 doneButton.className="bg-green-500 text-white px-3 py-2 rounded";
-doneButton.title="Concluir tarefa";
-doneButton.textContent=t.done?"Reabrir":"Concluir";
-doneButton.onclick=()=>toggleDone(i);
+doneButton.title="Finalizar tarefa";
+doneButton.textContent="Finalizar";
+doneButton.onclick=()=>finishTask(i);
 
 const editButton=document.createElement("button");
 editButton.className="bg-slate-600 text-white px-3 py-2 rounded";
@@ -502,20 +620,75 @@ render(getTasks());
 
 function loadHistory(){
 const date=document.getElementById("historyDate").value;
-const data=JSON.parse(localStorage.getItem("history_"+date))||[];
-render(data,"historyList",true);
+const data=getHistory(date);
+renderHistory(data);
+}
+
+function createHistoryCell(label,value){
+const wrapper=document.createElement("div");
+
+const cellLabel=document.createElement("span");
+cellLabel.className="history-label";
+cellLabel.textContent=label;
+
+const cellValue=document.createElement("span");
+cellValue.textContent=value||"-";
+
+wrapper.appendChild(cellLabel);
+wrapper.appendChild(cellValue);
+
+return wrapper;
+}
+
+function renderHistory(tasks){
+const list=document.getElementById("historyList");
+list.innerHTML="";
+
+if(tasks.length===0){
+const empty=document.createElement("p");
+empty.className="text-slate-500";
+empty.textContent="Nenhuma tarefa finalizada nesta data.";
+list.appendChild(empty);
+return;
+}
+
+const header=document.createElement("div");
+header.className="history-header";
+
+["Tarefa","Tela","Comentário","Prioridade","Inclusão","Encerramento"].forEach(label=>{
+const span=document.createElement("span");
+span.textContent=label;
+header.appendChild(span);
+});
+
+list.appendChild(header);
+
+tasks.map(normalizeTask).forEach(task=>{
+const line=document.createElement("div");
+line.className="history-line";
+
+line.appendChild(createHistoryCell("Tarefa",`${prioridadeIcon(task.priority)} ${task.title}`));
+line.appendChild(createHistoryCell("Tela",task.screen));
+line.appendChild(createHistoryCell("Comentário",task.comment));
+line.appendChild(createHistoryCell("Prioridade",prioridadeTexto(task.priority)));
+line.appendChild(createHistoryCell("Inclusão",formatDate(task.includedAt)));
+line.appendChild(createHistoryCell("Encerramento",formatDate(task.closedAt)));
+
+list.appendChild(line);
+});
 }
 
 /* ================= KPI ================= */
 
 function updateKPI(){
 const tasks=getTasks();
-const total=tasks.length;
-const done=tasks.filter(t=>t.done).length;
+const history=getAllHistoryTasks();
+const total=tasks.length+history.length;
+const done=history.length;
 
 document.getElementById("kpiTotal").innerText=total;
 document.getElementById("kpiDone").innerText=done;
-document.getElementById("kpiPending").innerText=total-done;
+document.getElementById("kpiPending").innerText=tasks.length;
 
 const rate=total?Math.round(done/total*100):0;
 document.getElementById("kpiRate").innerText=rate+"%";
@@ -537,6 +710,7 @@ document.body.classList.add("dark");
 /* START */
 loadTheme();
 criarBase();
+document.getElementById("historyDate").value=localDate();
 loadTasks();
 </script>
 
