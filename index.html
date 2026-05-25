@@ -7,6 +7,7 @@
 <link rel="icon" href="assets/logo.png" type="image/png">
 
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 body{
@@ -191,6 +192,16 @@ background:#222;
 
 .hidden{display:none;}
 
+.storage-status{
+margin-bottom:12px;
+font-size:.85rem;
+color:#b45309;
+}
+
+.dark .storage-status{
+color:#fbbf24;
+}
+
 @media(min-width:900px){
 #taskList{
 grid-template-columns:repeat(2,minmax(0,1fr));
@@ -263,6 +274,8 @@ display:none;
 <h1 class="text-2xl font-bold mb-4">Tarefas em aberto</h1>
 
 <div class="card">
+
+<p id="storageStatus" class="storage-status hidden"></p>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-2 mb-4">
 <input id="taskInput" class="border p-2 text-black rounded" placeholder="Nova tarefa">
@@ -339,6 +352,40 @@ Recuperar
 
 const openTasksKey="open_tasks";
 const selectedHistory=new Set();
+const supabaseUrl="https://fowquuzjobccqjpowyf.supabase.co";
+const supabaseAnonKey="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvd3F1dXpqb2JjY3FqcXBvd3lmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3MjgwODEsImV4cCI6MjA5NTMwNDA4MX0.280NLYQdLhPRs48BLb7ZADkPq7ffUyrqmeHdqscXkMM";
+const storageTable="app_storage";
+const hasSupabaseKey=supabaseAnonKey && !supabaseAnonKey.includes("COLE_AQUI");
+const db=hasSupabaseKey?supabase.createClient(supabaseUrl,supabaseAnonKey):null;
+const storageCache=new Map();
+
+/*
+SQL para criar a tabela no Supabase:
+
+create table if not exists public.app_storage (
+  key text primary key,
+  value jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.app_storage enable row level security;
+
+create policy "Permitir leitura anonima app_storage"
+on public.app_storage for select
+to anon
+using (true);
+
+create policy "Permitir escrita anonima app_storage"
+on public.app_storage for insert
+to anon
+with check (true);
+
+create policy "Permitir atualizacao anonima app_storage"
+on public.app_storage for update
+to anon
+using (true)
+with check (true);
+*/
 
 const tarefasFixas=[
 "Abertura Informe Diário",
@@ -390,31 +437,134 @@ if(id==="dashboard")updateKPI();
 
 /* ================= STORAGE ================= */
 
-function getTasks(){
-const tasks=JSON.parse(localStorage.getItem(openTasksKey))||[];
-return tasks.map(normalizeTask);
+function setStorageStatus(message){
+const status=document.getElementById("storageStatus");
+if(!status)return;
+status.textContent=message||"";
+status.classList.toggle("hidden",!message);
 }
 
-function save(tasks){
-localStorage.setItem(openTasksKey,JSON.stringify(tasks.map(normalizeTask)));
+function requireDatabase(){
+if(db)return true;
+setStorageStatus("Configure a supabaseAnonKey no index.html para salvar os dados no Supabase.");
+return false;
 }
 
-function getHistory(date){
-const tasks=JSON.parse(localStorage.getItem(getHistoryKey(date)))||[];
-return tasks.map(normalizeTask);
+async function storageGet(key){
+if(!requireDatabase())return [];
+if(storageCache.has(key))return storageCache.get(key);
+
+const {data,error}=await db
+.from(storageTable)
+.select("value")
+.eq("key",key)
+.maybeSingle();
+
+if(error){
+console.error(error);
+setStorageStatus("Nao foi possivel ler os dados no Supabase. Confira a tabela, a anon key e as politicas RLS.");
+return [];
 }
 
-function saveHistory(tasks,date){
-localStorage.setItem(getHistoryKey(date),JSON.stringify(tasks.map(normalizeTask)));
+const value=Array.isArray(data?.value)?data.value:[];
+storageCache.set(key,value);
+setStorageStatus("");
+return value;
 }
 
-function getAllHistoryTasks(){
-let history=[];
+async function storageSet(key,value){
+if(!requireDatabase())return;
+const normalizedValue=Array.isArray(value)?value:[];
+const {error}=await db
+.from(storageTable)
+.upsert({
+key,
+value:normalizedValue,
+updated_at:new Date().toISOString()
+});
 
+if(error){
+console.error(error);
+setStorageStatus("Nao foi possivel salvar no Supabase. Confira a tabela, a anon key e as politicas RLS.");
+return;
+}
+
+storageCache.set(key,normalizedValue);
+setStorageStatus("");
+}
+
+async function storageKeys(prefix){
+if(!requireDatabase())return [];
+
+const {data,error}=await db
+.from(storageTable)
+.select("key,value")
+.like("key",`${prefix}%`);
+
+if(error){
+console.error(error);
+setStorageStatus("Nao foi possivel listar o historico no Supabase.");
+return [];
+}
+
+data.forEach(row=>storageCache.set(row.key,Array.isArray(row.value)?row.value:[]));
+setStorageStatus("");
+return data.map(row=>row.key);
+}
+
+async function migrateLocalStorageToSupabase(){
+if(!requireDatabase())return;
+
+const keys=[openTasksKey];
 for(let i=0;i<localStorage.length;i++){
 const key=localStorage.key(i);
+if(key && key.startsWith("history_"))keys.push(key);
+}
+
+for(const key of keys){
+if(storageCache.has(key))continue;
+const existing=await storageGet(key);
+if(existing.length>0)continue;
+
+const localValue=localStorage.getItem(key);
+if(!localValue)continue;
+
+try{
+const parsed=JSON.parse(localValue);
+if(Array.isArray(parsed) && parsed.length>0){
+await storageSet(key,parsed.map(normalizeTask));
+}
+}catch(error){
+console.error(error);
+}
+}
+}
+
+async function getTasks(){
+const tasks=await storageGet(openTasksKey);
+return tasks.map(normalizeTask);
+}
+
+async function save(tasks){
+await storageSet(openTasksKey,tasks.map(normalizeTask));
+}
+
+async function getHistory(date){
+const tasks=await storageGet(getHistoryKey(date));
+return tasks.map(normalizeTask);
+}
+
+async function saveHistory(tasks,date){
+await storageSet(getHistoryKey(date),tasks.map(normalizeTask));
+}
+
+async function getAllHistoryTasks(){
+let history=[];
+
+const keys=await storageKeys("history_");
+for(const key of keys){
 if(key && key.startsWith("history_")){
-const tasks=JSON.parse(localStorage.getItem(key))||[];
+const tasks=await storageGet(key);
 history=history.concat(tasks.map(normalizeTask));
 }
 }
@@ -422,13 +572,13 @@ history=history.concat(tasks.map(normalizeTask));
 return history;
 }
 
-function getAllHistoryEntries(){
+async function getAllHistoryEntries(){
 let history=[];
 
-for(let i=0;i<localStorage.length;i++){
-const key=localStorage.key(i);
+const keys=await storageKeys("history_");
+for(const key of keys){
 if(key && key.startsWith("history_")){
-const tasks=JSON.parse(localStorage.getItem(key))||[];
+const tasks=await storageGet(key);
 tasks.forEach((task,index)=>{
 history.push({
 key,
@@ -445,8 +595,8 @@ return history;
 
 /* ================= CRIAR BASE ================= */
 
-function criarBase(){
-const tasks=getTasks();
+async function criarBase(){
+const tasks=await getTasks();
 
 if(tasks.length===0){
 tarefasFixas.forEach(t=>{
@@ -459,20 +609,20 @@ done:false
 });
 });
 
-save(tasks);
+await save(tasks);
 }
 }
 
 /* ================= ADICIONAR ================= */
 
-function addTask(){
+async function addTask(){
 const input=document.getElementById("taskInput");
 const comment=document.getElementById("commentInput");
 const priority=document.getElementById("priority").value;
 
 if(!input.value.trim())return;
 
-const tasks=getTasks();
+const tasks=await getTasks();
 
 tasks.push({
 title:input.value.trim(),
@@ -482,16 +632,16 @@ priority,
 done:false
 });
 
-save(tasks);
+await save(tasks);
 input.value="";
 comment.value="";
-loadTasks();
+await loadTasks();
 }
 
 /* ================= AÇÕES ================= */
 
-function finishTask(i){
-const tasks=getTasks();
+async function finishTask(i){
+const tasks=await getTasks();
 const closedAt=localDate();
 const finishedTask={
 ...tasks[i],
@@ -500,17 +650,17 @@ closedAt
 };
 
 tasks.splice(i,1);
-save(tasks);
+await save(tasks);
 
-const history=getHistory(closedAt);
+const history=await getHistory(closedAt);
 history.push(finishedTask);
-saveHistory(history,closedAt);
+await saveHistory(history,closedAt);
 
-loadTasks();
+await loadTasks();
 }
 
-function editTask(i){
-const tasks=getTasks();
+async function editTask(i){
+const tasks=await getTasks();
 const task=tasks[i];
 
 const title=prompt("Editar tarefa:",task.title);
@@ -518,60 +668,60 @@ if(title===null)return;
 
 task.title=title.trim()||task.title;
 
-save(tasks);
-loadTasks();
+await save(tasks);
+await loadTasks();
 }
 
-function removeTask(i){
+async function removeTask(i){
 if(!confirm("Deseja excluir esta tarefa?"))return;
 
-const tasks=getTasks();
+const tasks=await getTasks();
 tasks.splice(i,1);
-save(tasks);
-loadTasks();
+await save(tasks);
+await loadTasks();
 }
 
-function changePriority(i,value){
-const tasks=getTasks();
+async function changePriority(i,value){
+const tasks=await getTasks();
 tasks[i].priority=value;
-save(tasks);
-loadTasks();
+await save(tasks);
+await loadTasks();
 }
 
-function saveComment(i,value){
-const tasks=getTasks();
+async function saveComment(i,value){
+const tasks=await getTasks();
 tasks[i].comment=value;
-save(tasks);
+await save(tasks);
 }
 
-function moveTask(fromIndex,toIndex){
+async function moveTask(fromIndex,toIndex){
 if(fromIndex===toIndex || fromIndex<0 || toIndex<0)return;
 
-const tasks=getTasks();
+const tasks=await getTasks();
 if(fromIndex>=tasks.length || toIndex>=tasks.length)return;
 
 const [task]=tasks.splice(fromIndex,1);
 tasks.splice(toIndex,0,task);
-save(tasks);
-loadTasks();
+await save(tasks);
+await loadTasks();
 }
 
 function isInteractiveElement(element){
 return Boolean(element.closest("button,input,select,textarea,label"));
 }
 
-function recoverSelectedHistory(){
+async function recoverSelectedHistory(){
 if(selectedHistory.size===0){
 alert("Selecione uma tarefa concluída para recuperar.");
 return;
 }
 
-const entries=getAllHistoryEntries()
+const entries=(await getAllHistoryEntries())
 .filter(entry=>selectedHistory.has(entry.id));
 
 if(entries.length===0)return;
 
-const openTasks=getTasks();
+const openTasks=await getTasks();
 
 entries.forEach(entry=>{
 openTasks.push({
@@ -581,7 +731,7 @@ closedAt:""
 });
 });
 
-save(openTasks);
+await save(openTasks);
 
 const byKey={};
 entries.forEach(entry=>{
@@ -589,17 +739,17 @@ if(!byKey[entry.key])byKey[entry.key]=[];
 byKey[entry.key].push(entry.index);
 });
 
-Object.keys(byKey).forEach(key=>{
-const tasks=JSON.parse(localStorage.getItem(key))||[];
+for(const key of Object.keys(byKey)){
+const tasks=await storageGet(key);
 byKey[key]
 .sort((a,b)=>b-a)
 .forEach(index=>tasks.splice(index,1));
-localStorage.setItem(key,JSON.stringify(tasks));
-});
+await storageSet(key,tasks);
+}
 
 selectedHistory.clear();
-loadTasks();
-loadHistory();
+await loadTasks();
+await loadHistory();
 }
 
 /* ================= PRIORIDADE ================= */
@@ -807,12 +957,12 @@ ul.appendChild(li);
 
 /* ================= LOAD ================= */
 
-function loadTasks(){
-render(getTasks());
+async function loadTasks(){
+render(await getTasks());
 }
 
-function loadHistory(){
-const data=getAllHistoryEntries();
+async function loadHistory(){
+const data=await getAllHistoryEntries();
 renderHistory(data);
 }
 
@@ -887,9 +1037,9 @@ list.appendChild(line);
 
 /* ================= KPI ================= */
 
-function updateKPI(){
-const tasks=getTasks();
-const history=getAllHistoryTasks();
+async function updateKPI(){
+const tasks=await getTasks();
+const history=await getAllHistoryTasks();
 const total=tasks.length+history.length;
 const done=history.length;
 
@@ -915,9 +1065,14 @@ document.body.classList.add("dark");
 }
 
 /* START */
+async function start(){
 loadTheme();
-criarBase();
-loadTasks();
+await migrateLocalStorageToSupabase();
+await criarBase();
+await loadTasks();
+}
+
+start();
 </script>
 
 </body>
