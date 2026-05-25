@@ -249,7 +249,6 @@ Adicionar
 <h1 class="text-2xl font-bold mb-4">Histórico</h1>
 
 <div class="card">
-<input type="date" id="historyDate" onchange="loadHistory()" class="border p-2 mb-4 text-black rounded">
 <div id="historyList"></div>
 </div>
 
@@ -619,8 +618,7 @@ render(getTasks());
 }
 
 function loadHistory(){
-const date=document.getElementById("historyDate").value;
-const data=getHistory(date);
+const data=getAllHistoryTasks();
 renderHistory(data);
 }
 
@@ -647,7 +645,7 @@ list.innerHTML="";
 if(tasks.length===0){
 const empty=document.createElement("p");
 empty.className="text-slate-500";
-empty.textContent="Nenhuma tarefa finalizada nesta data.";
+empty.textContent="Nenhuma tarefa finalizada.";
 list.appendChild(empty);
 return;
 }
@@ -710,7 +708,6 @@ document.body.classList.add("dark");
 /* START */
 loadTheme();
 criarBase();
-document.getElementById("historyDate").value=localDate();
 loadTasks();
 </script>
 
