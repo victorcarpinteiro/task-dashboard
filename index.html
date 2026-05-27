@@ -8,6 +8,7 @@
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body{
@@ -172,6 +173,12 @@ width:220px;
 background:#111;
 color:white;
 min-height:100vh;
+height:100vh;
+position:sticky;
+top:0;
+overflow-y:auto;
+align-self:flex-start;
+flex-shrink:0;
 }
 
 .dark .menu{
@@ -196,6 +203,16 @@ background:#222;
 margin-bottom:12px;
 font-size:.85rem;
 color:#b45309;
+}
+
+.chart-box{
+height:320px;
+position:relative;
+}
+
+.chart-box canvas{
+width:100% !important;
+height:100% !important;
 }
 
 .dark .storage-status{
@@ -342,6 +359,31 @@ Recuperar
 
 </div>
 
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4">
+
+<div class="card">
+<h2 class="text-lg font-semibold mb-4">Produção por dia</h2>
+<div class="chart-box">
+<canvas id="dailyProductionChart"></canvas>
+</div>
+</div>
+
+<div class="card">
+<h2 class="text-lg font-semibold mb-4">Status das tarefas</h2>
+<div class="chart-box">
+<canvas id="productivityChart"></canvas>
+</div>
+</div>
+
+<div class="card xl:col-span-2">
+<h2 class="text-lg font-semibold mb-4">Prioridades em aberto</h2>
+<div class="chart-box">
+<canvas id="priorityChart"></canvas>
+</div>
+</div>
+
+</div>
+
 </section>
 
 </main>
@@ -358,6 +400,9 @@ const storageTable="app_storage";
 const hasSupabaseKey=supabaseAnonKey && !supabaseAnonKey.includes("COLE_AQUI");
 const db=hasSupabaseKey?supabase.createClient(supabaseUrl,supabaseAnonKey):null;
 const storageCache=new Map();
+let dailyProductionChart=null;
+let productivityChart=null;
+let priorityChart=null;
 
 /*
 SQL para criar a tabela no Supabase:
@@ -1049,6 +1094,125 @@ document.getElementById("kpiPending").innerText=tasks.length;
 
 const rate=total?Math.round(done/total*100):0;
 document.getElementById("kpiRate").innerText=rate+"%";
+
+renderDashboardCharts(tasks,history);
+}
+
+function getChartColors(){
+const dark=document.body.classList.contains("dark");
+return {
+text:dark?"#e5e7eb":"#0f172a",
+grid:dark?"rgba(148,163,184,.22)":"rgba(100,116,139,.18)",
+done:"#22c55e",
+pending:"#ef4444",
+high:"#ef4444",
+medium:"#f59e0b",
+low:"#22c55e",
+line:"#3b82f6"
+};
+}
+
+function createOrUpdateChart(instance,canvasId,config){
+const canvas=document.getElementById(canvasId);
+if(!canvas || typeof Chart==="undefined")return instance;
+
+if(instance){
+instance.data=config.data;
+instance.options=config.options;
+instance.update();
+return instance;
+}
+
+return new Chart(canvas,config);
+}
+
+function renderDashboardCharts(tasks,history){
+const colors=getChartColors();
+const priorityCounts={alta:0,media:0,baixa:0};
+tasks.forEach(task=>{
+const priority=normalizeTask(task).priority;
+priorityCounts[priority]=(priorityCounts[priority]||0)+1;
+});
+
+const productionByDate={};
+history.forEach(task=>{
+const closedAt=normalizeTask(task).closedAt||localDate();
+productionByDate[closedAt]=(productionByDate[closedAt]||0)+1;
+});
+
+const productionDates=Object.keys(productionByDate).sort();
+const lastDates=productionDates.slice(-7);
+const dailyLabels=lastDates.map(formatDate);
+const dailyValues=lastDates.map(date=>productionByDate[date]);
+
+dailyProductionChart=createOrUpdateChart(dailyProductionChart,"dailyProductionChart",{
+type:"bar",
+data:{
+labels:dailyLabels.length?dailyLabels:["Sem dados"],
+datasets:[{
+label:"Tarefas concluídas",
+data:dailyValues.length?dailyValues:[0],
+backgroundColor:colors.line,
+borderRadius:8
+}]
+},
+options:{
+responsive:true,
+maintainAspectRatio:false,
+plugins:{
+legend:{display:false}
+},
+scales:{
+x:{ticks:{color:colors.text},grid:{color:colors.grid}},
+y:{beginAtZero:true,ticks:{color:colors.text,precision:0},grid:{color:colors.grid}}
+}
+}
+});
+
+productivityChart=createOrUpdateChart(productivityChart,"productivityChart",{
+type:"doughnut",
+data:{
+labels:["Concluídas","Pendentes"],
+datasets:[{
+data:[history.length,tasks.length],
+backgroundColor:[colors.done,colors.pending],
+borderWidth:0
+}]
+},
+options:{
+responsive:true,
+maintainAspectRatio:false,
+plugins:{
+legend:{position:"bottom",labels:{color:colors.text}}
+},
+cutout:"62%"
+}
+});
+
+priorityChart=createOrUpdateChart(priorityChart,"priorityChart",{
+type:"bar",
+data:{
+labels:["Alta","Média","Baixa"],
+datasets:[{
+label:"Tarefas em aberto",
+data:[priorityCounts.alta,priorityCounts.media,priorityCounts.baixa],
+backgroundColor:[colors.high,colors.medium,colors.low],
+borderRadius:8
+}]
+},
+options:{
+indexAxis:"y",
+responsive:true,
+maintainAspectRatio:false,
+plugins:{
+legend:{display:false}
+},
+scales:{
+x:{beginAtZero:true,ticks:{color:colors.text,precision:0},grid:{color:colors.grid}},
+y:{ticks:{color:colors.text},grid:{display:false}}
+}
+}
+});
 }
 
 /* ================= DARK ================= */
@@ -1056,6 +1220,9 @@ document.getElementById("kpiRate").innerText=rate+"%";
 function toggleDark(){
 document.body.classList.toggle("dark");
 localStorage.setItem("dark_mode",document.body.classList.contains("dark"));
+if(!document.getElementById("dashboard").classList.contains("hidden")){
+updateKPI();
+}
 }
 
 function loadTheme(){
