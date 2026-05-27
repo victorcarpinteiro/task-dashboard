@@ -196,6 +196,30 @@ margin-bottom:6px;
 background:#222;
 }
 
+.hamburger-button{
+display:none;
+position:fixed;
+top:14px;
+left:14px;
+z-index:50;
+width:44px;
+height:44px;
+border-radius:8px;
+background:#111;
+color:white;
+font-size:1.5rem;
+line-height:1;
+box-shadow:0 4px 12px rgba(0,0,0,.18);
+}
+
+.mobile-menu-overlay{
+display:none;
+position:fixed;
+inset:0;
+z-index:35;
+background:rgba(15,23,42,.52);
+}
+
 .hidden{display:none;}
 
 .storage-status{
@@ -231,6 +255,50 @@ grid-template-columns:repeat(3,minmax(0,1fr));
 }
 
 @media(max-width:900px){
+.hamburger-button{
+display:flex;
+align-items:center;
+justify-content:center;
+}
+
+.menu{
+position:fixed;
+z-index:45;
+top:0;
+left:0;
+width:min(82vw,280px);
+height:100vh;
+transform:translateX(-100%);
+transition:transform .25s ease;
+box-shadow:8px 0 24px rgba(0,0,0,.22);
+}
+
+body.mobile-menu-open .menu{
+transform:translateX(0);
+}
+
+body.mobile-menu-open .mobile-menu-overlay{
+display:block;
+}
+
+body.mobile-menu-open{
+overflow:hidden;
+}
+
+main{
+padding-top:76px !important;
+width:100%;
+min-width:0;
+}
+
+.card{
+padding:16px;
+}
+
+.chart-box{
+height:260px;
+}
+
 .history-line{
 grid-template-columns:1fr;
 gap:4px;
@@ -256,15 +324,32 @@ text-transform:uppercase;
 display:none;
 }
 }
+
+@media(max-width:520px){
+main{
+padding-left:12px !important;
+padding-right:12px !important;
+}
+
+.chart-box{
+height:230px;
+}
+}
 </style>
 </head>
 
 <body id="body">
 
+<button class="hamburger-button" onclick="toggleMobileMenu()" aria-label="Abrir menu" aria-controls="sideMenu" aria-expanded="false">
+☰
+</button>
+
+<div class="mobile-menu-overlay" onclick="closeMobileMenu()"></div>
+
 <div class="flex min-h-screen">
 
 <!-- SIDEBAR -->
-<div class="menu p-4">
+<div id="sideMenu" class="menu p-4">
 
 <div class="flex items-center gap-3 mb-6">
 <img src="assets/logo.png" width="40" alt="Logo">
@@ -441,10 +526,36 @@ document.querySelectorAll("#openTasks,#history,#dashboard")
 .forEach(x=>x.classList.add("hidden"));
 
 document.getElementById(id).classList.remove("hidden");
+closeMobileMenu();
 
 if(id==="history")loadHistory();
 if(id==="dashboard")updateKPI();
 }
+
+function setMobileMenuState(isOpen){
+document.body.classList.toggle("mobile-menu-open",isOpen);
+const button=document.querySelector(".hamburger-button");
+if(button){
+button.setAttribute("aria-expanded",String(isOpen));
+button.textContent=isOpen?"×":"☰";
+}
+}
+
+function toggleMobileMenu(){
+setMobileMenuState(!document.body.classList.contains("mobile-menu-open"));
+}
+
+function closeMobileMenu(){
+setMobileMenuState(false);
+}
+
+window.addEventListener("keydown",event=>{
+if(event.key==="Escape")closeMobileMenu();
+});
+
+window.addEventListener("resize",()=>{
+if(window.innerWidth>900)closeMobileMenu();
+});
 
 /* ================= STORAGE ================= */
 
