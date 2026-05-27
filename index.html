@@ -1026,12 +1026,13 @@ const dark=document.body.classList.contains("dark");
 return {
 text:dark?"#e5e7eb":"#0f172a",
 grid:dark?"rgba(148,163,184,.22)":"rgba(100,116,139,.18)",
-done:"#22c55e",
-pending:"#ef4444",
+brandGreen:"#00c853",
+done:"#006b3a",
+pending:dark?"#4b5563":"#d1d5db",
 high:"#ef4444",
 medium:"#f59e0b",
 low:"#22c55e",
-line:"#3b82f6"
+line:"#00c853"
 };
 }
 
@@ -1075,7 +1076,8 @@ labels:dailyLabels.length?dailyLabels:["Sem dados"],
 datasets:[{
 label:"Tarefas concluídas",
 data:dailyValues.length?dailyValues:[0],
-backgroundColor:colors.line,
+backgroundColor:colors.brandGreen,
+hoverBackgroundColor:colors.done,
 borderRadius:8
 }]
 },
@@ -1095,10 +1097,11 @@ y:{beginAtZero:true,ticks:{color:colors.text,precision:0},grid:{color:colors.gri
 productivityChart=createOrUpdateChart(productivityChart,"productivityChart",{
 type:"doughnut",
 data:{
-labels:["Concluídas","Pendentes"],
+labels:["Produzido","Nao realizados"],
 datasets:[{
 data:[history.length,tasks.length],
 backgroundColor:[colors.done,colors.pending],
+hoverBackgroundColor:[colors.done,colors.pending],
 borderWidth:0
 }]
 },
@@ -1108,7 +1111,9 @@ maintainAspectRatio:false,
 plugins:{
 legend:{position:"bottom",labels:{color:colors.text}}
 },
-cutout:"62%"
+rotation:-90,
+circumference:180,
+cutout:"72%"
 }
 });
 
