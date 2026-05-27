@@ -7,7 +7,6 @@
 <link rel="icon" href="assets/logo.png" type="image/png">
 
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -394,43 +393,10 @@ Recuperar
 
 const openTasksKey="open_tasks";
 const selectedHistory=new Set();
-const supabaseUrl="https://fowquuzjobccqjpowyf.supabase.co";
-const supabaseAnonKey="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvd3F1dXpqb2JjY3FqcXBvd3lmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3MjgwODEsImV4cCI6MjA5NTMwNDA4MX0.280NLYQdLhPRs48BLb7ZADkPq7ffUyrqmeHdqscXkMM";
-const storageTable="app_storage";
-const hasSupabaseKey=supabaseAnonKey && !supabaseAnonKey.includes("COLE_AQUI");
-const db=hasSupabaseKey?supabase.createClient(supabaseUrl,supabaseAnonKey):null;
 const storageCache=new Map();
 let dailyProductionChart=null;
 let productivityChart=null;
 let priorityChart=null;
-
-/*
-SQL para criar a tabela no Supabase:
-
-create table if not exists public.app_storage (
-  key text primary key,
-  value jsonb not null default '[]'::jsonb,
-  updated_at timestamptz not null default now()
-);
-
-alter table public.app_storage enable row level security;
-
-create policy "Permitir leitura anonima app_storage"
-on public.app_storage for select
-to anon
-using (true);
-
-create policy "Permitir escrita anonima app_storage"
-on public.app_storage for insert
-to anon
-with check (true);
-
-create policy "Permitir atualizacao anonima app_storage"
-on public.app_storage for update
-to anon
-using (true)
-with check (true);
-*/
 
 const tarefasFixas=[
 "Abertura Informe Diário",
@@ -489,100 +455,55 @@ status.textContent=message||"";
 status.classList.toggle("hidden",!message);
 }
 
-function requireDatabase(){
-if(db)return true;
-setStorageStatus("Configure a supabaseAnonKey no index.html para salvar os dados no Supabase.");
+function readLocalStorageArray(key){
+try{
+const value=localStorage.getItem(key);
+if(!value)return [];
+const parsed=JSON.parse(value);
+return Array.isArray(parsed)?parsed:[];
+}catch(error){
+console.error(error);
+return [];
+}
+}
+
+function writeLocalStorageArray(key,value){
+try{
+localStorage.setItem(key,JSON.stringify(Array.isArray(value)?value:[]));
+setStorageStatus("");
+return true;
+}catch(error){
+console.error(error);
+setStorageStatus("Nao foi possivel salvar no navegador. Verifique o espaco disponivel ou permissoes do browser.");
 return false;
+}
 }
 
 async function storageGet(key){
-if(!requireDatabase())return [];
 if(storageCache.has(key))return storageCache.get(key);
 
-const {data,error}=await db
-.from(storageTable)
-.select("value")
-.eq("key",key)
-.maybeSingle();
-
-if(error){
-console.error(error);
-setStorageStatus("Nao foi possivel ler os dados no Supabase. Confira a tabela, a anon key e as politicas RLS.");
-return [];
-}
-
-const value=Array.isArray(data?.value)?data.value:[];
-storageCache.set(key,value);
-setStorageStatus("");
-return value;
+const localValue=readLocalStorageArray(key);
+storageCache.set(key,localValue);
+return localValue;
 }
 
 async function storageSet(key,value){
-if(!requireDatabase())return;
 const normalizedValue=Array.isArray(value)?value:[];
-const {error}=await db
-.from(storageTable)
-.upsert({
-key,
-value:normalizedValue,
-updated_at:new Date().toISOString()
-});
-
-if(error){
-console.error(error);
-setStorageStatus("Nao foi possivel salvar no Supabase. Confira a tabela, a anon key e as politicas RLS.");
-return;
+storageCache.set(key,normalizedValue);
+return writeLocalStorageArray(key,normalizedValue);
 }
 
-storageCache.set(key,normalizedValue);
-setStorageStatus("");
+function localStorageKeys(prefix){
+const keys=[];
+for(let i=0;i<localStorage.length;i++){
+const key=localStorage.key(i);
+if(key && key.startsWith(prefix))keys.push(key);
+}
+return keys;
 }
 
 async function storageKeys(prefix){
-if(!requireDatabase())return [];
-
-const {data,error}=await db
-.from(storageTable)
-.select("key,value")
-.like("key",`${prefix}%`);
-
-if(error){
-console.error(error);
-setStorageStatus("Nao foi possivel listar o historico no Supabase.");
-return [];
-}
-
-data.forEach(row=>storageCache.set(row.key,Array.isArray(row.value)?row.value:[]));
-setStorageStatus("");
-return data.map(row=>row.key);
-}
-
-async function migrateLocalStorageToSupabase(){
-if(!requireDatabase())return;
-
-const keys=[openTasksKey];
-for(let i=0;i<localStorage.length;i++){
-const key=localStorage.key(i);
-if(key && key.startsWith("history_"))keys.push(key);
-}
-
-for(const key of keys){
-if(storageCache.has(key))continue;
-const existing=await storageGet(key);
-if(existing.length>0)continue;
-
-const localValue=localStorage.getItem(key);
-if(!localValue)continue;
-
-try{
-const parsed=JSON.parse(localValue);
-if(Array.isArray(parsed) && parsed.length>0){
-await storageSet(key,parsed.map(normalizeTask));
-}
-}catch(error){
-console.error(error);
-}
-}
+return localStorageKeys(prefix);
 }
 
 async function getTasks(){
@@ -591,7 +512,7 @@ return tasks.map(normalizeTask);
 }
 
 async function save(tasks){
-await storageSet(openTasksKey,tasks.map(normalizeTask));
+return await storageSet(openTasksKey,tasks.map(normalizeTask));
 }
 
 async function getHistory(date){
@@ -600,7 +521,7 @@ return tasks.map(normalizeTask);
 }
 
 async function saveHistory(tasks,date){
-await storageSet(getHistoryKey(date),tasks.map(normalizeTask));
+return await storageSet(getHistoryKey(date),tasks.map(normalizeTask));
 }
 
 async function getAllHistoryTasks(){
@@ -687,6 +608,8 @@ await loadTasks();
 
 async function finishTask(i){
 const tasks=await getTasks();
+if(!tasks[i])return;
+
 const closedAt=localDate();
 const finishedTask={
 ...tasks[i],
@@ -694,12 +617,12 @@ done:true,
 closedAt
 };
 
-tasks.splice(i,1);
-await save(tasks);
-
 const history=await getHistory(closedAt);
 history.push(finishedTask);
 await saveHistory(history,closedAt);
+
+tasks.splice(i,1);
+await save(tasks);
 
 await loadTasks();
 }
@@ -1234,7 +1157,6 @@ document.body.classList.add("dark");
 /* START */
 async function start(){
 loadTheme();
-await migrateLocalStorageToSupabase();
 await criarBase();
 await loadTasks();
 }
