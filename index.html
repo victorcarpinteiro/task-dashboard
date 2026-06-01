@@ -74,6 +74,24 @@ letter-spacing:.04em;
 text-transform:uppercase;
 }
 
+.history-sort-button{
+background:transparent;
+border:0;
+color:#64748b;
+cursor:pointer;
+font-size:.75rem;
+font-weight:700;
+letter-spacing:.04em;
+padding:0;
+text-transform:uppercase;
+text-align:left;
+width:100%;
+}
+
+.history-sort-button:hover{
+color:#0f172a;
+}
+
 .history-line:first-child{
 border-top:1px solid #e2e8f0;
 }
@@ -145,6 +163,14 @@ color:#e5e7eb;
 
 .dark .history-header span{
 color:#94a3b8;
+}
+
+.dark .history-sort-button{
+color:#94a3b8;
+}
+
+.dark .history-sort-button:hover{
+color:#e5e7eb;
 }
 
 .dark .task-label{
@@ -479,6 +505,10 @@ Recuperar
 const openTasksKey="open_tasks";
 const selectedHistory=new Set();
 const storageCache=new Map();
+const historySort={
+field:"closedAt",
+direction:"desc"
+};
 let dailyProductionChart=null;
 let productivityChart=null;
 let priorityChart=null;
@@ -1045,6 +1075,69 @@ const data=await getAllHistoryEntries();
 renderHistory(data);
 }
 
+function getHistorySortValue(entry,field){
+const task=normalizeTask(entry.task);
+
+if(field==="title")return task.title.toLowerCase();
+if(field==="comment")return task.comment.toLowerCase();
+if(field==="priority")return prioridadeTexto(task.priority).toLowerCase();
+if(field==="includedAt")return task.includedAt||"";
+if(field==="closedAt")return task.closedAt||"";
+
+return "";
+}
+
+function sortHistoryEntries(entries){
+return [...entries]
+.map((entry,index)=>({entry,index}))
+.sort((a,b)=>{
+const first=getHistorySortValue(a.entry,historySort.field);
+const second=getHistorySortValue(b.entry,historySort.field);
+let result=0;
+
+if(historySort.field==="includedAt" || historySort.field==="closedAt"){
+result=first.localeCompare(second);
+}else{
+result=first.localeCompare(second,"pt-BR",{sensitivity:"base"});
+}
+
+if(result===0)result=a.index-b.index;
+return historySort.direction==="asc"?result:-result;
+})
+.map(item=>item.entry);
+}
+
+function toggleHistorySort(field){
+if(historySort.field===field){
+historySort.direction=historySort.direction==="asc"?"desc":"asc";
+}else{
+historySort.field=field;
+historySort.direction="asc";
+}
+
+loadHistory();
+}
+
+function createHistoryHeaderButton(label,field){
+const button=document.createElement("button");
+button.type="button";
+button.className="history-sort-button";
+
+let indicator="";
+if(historySort.field===field){
+const isDate=field==="includedAt" || field==="closedAt";
+if(isDate){
+indicator=historySort.direction==="asc"?" antigo-novo":" novo-antigo";
+}else{
+indicator=historySort.direction==="asc"?" A-Z":" Z-A";
+}
+}
+
+button.textContent=label+indicator;
+button.onclick=()=>toggleHistorySort(field);
+return button;
+}
+
 function createHistoryCell(label,value){
 const wrapper=document.createElement("div");
 
@@ -1064,8 +1157,9 @@ return wrapper;
 function renderHistory(entries){
 const list=document.getElementById("historyList");
 list.innerHTML="";
+const sortedEntries=sortHistoryEntries(entries);
 
-if(entries.length===0){
+if(sortedEntries.length===0){
 const empty=document.createElement("p");
 empty.className="text-slate-500";
 empty.textContent="Nenhuma tarefa finalizada.";
@@ -1076,15 +1170,24 @@ return;
 const header=document.createElement("div");
 header.className="history-header";
 
-["","Tarefa","Comentário","Prioridade","Inclusão","Encerramento"].forEach(label=>{
+const emptyHeader=document.createElement("span");
+header.appendChild(emptyHeader);
+
+[
+["Tarefa","title"],
+["Comentário","comment"],
+["Prioridade","priority"],
+["Inclusão","includedAt"],
+["Encerramento","closedAt"]
+].forEach(([label,field])=>{
 const span=document.createElement("span");
-span.textContent=label;
+span.appendChild(createHistoryHeaderButton(label,field));
 header.appendChild(span);
 });
 
 list.appendChild(header);
 
-entries.forEach(entry=>{
+sortedEntries.forEach(entry=>{
 const task=normalizeTask(entry.task);
 const line=document.createElement("div");
 line.className="history-line";
