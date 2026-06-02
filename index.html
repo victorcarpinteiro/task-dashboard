@@ -543,8 +543,19 @@ comment:task.comment||task.note||"",
 includedAt:task.includedAt||localDate(),
 closedAt:task.closedAt||"",
 priority:task.priority||"media",
+status:task.status||(task.done?"finalizada":"em_aberto"),
 done:Boolean(task.done)
 };
+}
+
+function statusTexto(status){
+const labels={
+em_aberto:"Em aberto",
+iniciada:"Iniciada",
+pendencia_terceiros:"Pendencia Terceiros",
+finalizada:"Finalizada"
+};
+return labels[status]||labels.em_aberto;
 }
 
 function getHistoryKey(date){
@@ -715,6 +726,7 @@ requester:"",
 comment:"",
 includedAt:localDate(),
 priority:"alta",
+status:"em_aberto",
 done:false
 });
 });
@@ -741,6 +753,7 @@ requester:requester.value.trim(),
 comment:comment.value.trim(),
 includedAt:localDate(),
 priority,
+status:"em_aberto",
 done:false
 });
 
@@ -761,6 +774,7 @@ const closedAt=localDate();
 const finishedTask={
 ...tasks[i],
 done:true,
+status:"finalizada",
 closedAt
 };
 
@@ -804,6 +818,13 @@ await loadTasks();
 async function changePriority(i,value){
 const tasks=await getTasks();
 tasks[i].priority=value;
+await save(tasks);
+await loadTasks();
+}
+
+async function changeStatus(i,value){
+const tasks=await getTasks();
+tasks[i].status=value;
 await save(tasks);
 await loadTasks();
 }
@@ -1051,7 +1072,33 @@ priorityField.appendChild(prioritySelect);
 }
 
 grid.appendChild(priorityField);
-grid.appendChild(createField("Status",t.done?"Finalizada":"Em aberto"));
+
+const statusField=document.createElement("div");
+const statusLabel=document.createElement("p");
+statusLabel.className="task-label";
+statusLabel.textContent="Status";
+
+if(readonly){
+const statusValue=document.createElement("p");
+statusValue.className="task-value";
+statusValue.textContent=statusTexto(t.status);
+statusField.appendChild(statusLabel);
+statusField.appendChild(statusValue);
+}else{
+const statusSelect=document.createElement("select");
+statusSelect.className="priority-select mt-1";
+statusSelect.innerHTML=`
+<option value="em_aberto">Em aberto</option>
+<option value="iniciada">Iniciada</option>
+<option value="pendencia_terceiros">Pendencia Terceiros</option>
+`;
+statusSelect.value=t.status==="finalizada"?"em_aberto":t.status;
+statusSelect.onchange=e=>changeStatus(i,e.target.value);
+statusField.appendChild(statusLabel);
+statusField.appendChild(statusSelect);
+}
+
+grid.appendChild(statusField);
 li.appendChild(grid);
 
 if(!readonly){
