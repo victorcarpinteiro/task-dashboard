@@ -536,6 +536,7 @@ return `${day}/${month}/${year}`;
 }
 
 function normalizeTask(task){
+const status=task.status==="iniciada" || task.status==="finalizada"?task.status:"em_aberto";
 return {
 title:task.title||"",
 requester:task.requester||"",
@@ -543,7 +544,7 @@ comment:task.comment||task.note||"",
 includedAt:task.includedAt||localDate(),
 closedAt:task.closedAt||"",
 priority:task.priority||"media",
-status:task.status||(task.done?"finalizada":"em_aberto"),
+status:task.done?"finalizada":status,
 done:Boolean(task.done)
 };
 }
@@ -552,7 +553,6 @@ function statusTexto(status){
 const labels={
 em_aberto:"Em aberto",
 iniciada:"Iniciada",
-pendencia_terceiros:"Pendencia Terceiros",
 finalizada:"Finalizada"
 };
 return labels[status]||labels.em_aberto;
@@ -1090,7 +1090,6 @@ statusSelect.className="priority-select mt-1";
 statusSelect.innerHTML=`
 <option value="em_aberto">Em aberto</option>
 <option value="iniciada">Iniciada</option>
-<option value="pendencia_terceiros">Pendencia Terceiros</option>
 `;
 statusSelect.value=t.status==="finalizada"?"em_aberto":t.status;
 statusSelect.onchange=e=>changeStatus(i,e.target.value);
