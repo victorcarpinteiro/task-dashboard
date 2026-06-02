@@ -52,7 +52,7 @@ box-shadow:0 0 0 3px rgba(59,130,246,.18),0 4px 12px rgba(0,0,0,.12);
 
 .history-line{
 display:grid;
-grid-template-columns:40px 1.5fr 1.8fr .8fr .9fr .9fr;
+grid-template-columns:40px 1.4fr 1fr 1.6fr .8fr .9fr .9fr;
 gap:12px;
 align-items:center;
 padding:12px;
@@ -61,7 +61,7 @@ border-bottom:1px solid #e2e8f0;
 
 .history-header{
 display:grid;
-grid-template-columns:40px 1.5fr 1.8fr .8fr .9fr .9fr;
+grid-template-columns:40px 1.4fr 1fr 1.6fr .8fr .9fr .9fr;
 gap:12px;
 padding:0 12px 8px;
 }
@@ -404,8 +404,9 @@ height:230px;
 
 <p id="storageStatus" class="storage-status hidden"></p>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-2 mb-4">
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-2 mb-4">
 <input id="taskInput" class="border p-2 text-black rounded" placeholder="Nova tarefa">
+<input id="requesterInput" class="border p-2 text-black rounded" placeholder="Solicitante">
 <input id="commentInput" class="border p-2 text-black rounded" placeholder="Comentário">
 
 <div class="flex gap-2">
@@ -537,6 +538,7 @@ return `${day}/${month}/${year}`;
 function normalizeTask(task){
 return {
 title:task.title||"",
+requester:task.requester||"",
 comment:task.comment||task.note||"",
 includedAt:task.includedAt||localDate(),
 closedAt:task.closedAt||"",
@@ -709,6 +711,7 @@ if(tasks.length===0){
 tarefasFixas.forEach(t=>{
 tasks.push({
 title:t,
+requester:"",
 comment:"",
 includedAt:localDate(),
 priority:"alta",
@@ -724,6 +727,7 @@ await save(tasks);
 
 async function addTask(){
 const input=document.getElementById("taskInput");
+const requester=document.getElementById("requesterInput");
 const comment=document.getElementById("commentInput");
 const priority=document.getElementById("priority").value;
 
@@ -733,6 +737,7 @@ const tasks=await getTasks();
 
 tasks.push({
 title:input.value.trim(),
+requester:requester.value.trim(),
 comment:comment.value.trim(),
 includedAt:localDate(),
 priority,
@@ -741,6 +746,7 @@ done:false
 
 await save(tasks);
 input.value="";
+requester.value="";
 comment.value="";
 await loadTasks();
 }
@@ -776,6 +782,11 @@ const title=prompt("Editar tarefa:",task.title);
 if(title===null)return;
 
 task.title=title.trim()||task.title;
+
+const requester=prompt("Editar solicitante:",task.requester||"");
+if(requester===null)return;
+
+task.requester=requester.trim();
 
 await save(tasks);
 await loadTasks();
@@ -1008,9 +1019,11 @@ header.appendChild(actions);
 li.appendChild(header);
 
 const grid=document.createElement("div");
-grid.className="grid grid-cols-1 sm:grid-cols-3 gap-3";
+grid.className="grid grid-cols-1 sm:grid-cols-4 gap-3";
 
 grid.appendChild(createField("Data de inclusão",formatDate(t.includedAt)));
+
+grid.appendChild(createField("Solicitante",t.requester));
 
 const priorityField=document.createElement("div");
 const priorityLabel=document.createElement("p");
@@ -1079,6 +1092,7 @@ function getHistorySortValue(entry,field){
 const task=normalizeTask(entry.task);
 
 if(field==="title")return task.title.toLowerCase();
+if(field==="requester")return task.requester.toLowerCase();
 if(field==="comment")return task.comment.toLowerCase();
 if(field==="priority")return prioridadeTexto(task.priority).toLowerCase();
 if(field==="includedAt")return task.includedAt||"";
@@ -1175,6 +1189,7 @@ header.appendChild(emptyHeader);
 
 [
 ["Tarefa","title"],
+["Solicitante","requester"],
 ["Comentário","comment"],
 ["Prioridade","priority"],
 ["Inclusão","includedAt"],
@@ -1208,6 +1223,7 @@ checkboxWrapper.appendChild(checkbox);
 
 line.appendChild(checkboxWrapper);
 line.appendChild(createHistoryCell("Tarefa",`${prioridadeIcon(task.priority)} ${task.title}`));
+line.appendChild(createHistoryCell("Solicitante",task.requester));
 line.appendChild(createHistoryCell("Comentário",task.comment));
 line.appendChild(createHistoryCell("Prioridade",prioridadeTexto(task.priority)));
 line.appendChild(createHistoryCell("Inclusão",formatDate(task.includedAt)));
